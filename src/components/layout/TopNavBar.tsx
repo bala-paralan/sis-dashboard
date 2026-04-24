@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +22,7 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const { user, logout } = useAuthStore()
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -118,9 +120,21 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.role ?? 'Operator'}
         </span>
       </div>
+
+      {/* Logout */}
+      {user && (
+        <button
+          onClick={() => void logout()}
+          title="Sign out"
+          className="w-[30px] h-[30px] rounded-[6px] border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer flex items-center justify-center text-[13px] shrink-0 transition-colors hover:text-alert-critical hover:border-alert-critical"
+          aria-label="Sign out"
+        >
+          ⏻
+        </button>
+      )}
     </header>
   )
 }
