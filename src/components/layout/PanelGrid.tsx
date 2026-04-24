@@ -20,6 +20,7 @@ const AdvancedAIPanel   = lazy(() => import('@/components/panels/AdvancedAIPanel
 const WeatherPanel      = lazy(() => import('@/components/panels/WeatherPanel').then((m) => ({ default: m.WeatherPanel })))
 const SettingsPanel     = lazy(() => import('@/components/panels/SettingsPanel').then((m) => ({ default: m.SettingsPanel })))
 const DeviceConfigPage  = lazy(() => import('@/components/pages/DeviceConfigPage').then((m) => ({ default: m.DeviceConfigPage })))
+const CameraGrid        = lazy(() => import('@/components/cameras/CameraGrid').then((m) => ({ default: m.CameraGrid })))
 
 function PanelFallback({ name }: { name: string }) {
   return (
@@ -116,6 +117,21 @@ export function PanelGrid() {
         <PanelShell panelId="settings" title="Dashboard Settings" icon="⚙" style={{ flex: 1 }}>
           <Suspense fallback={<PanelFallback name="Settings" />}>
             <SettingsPanel />
+          </Suspense>
+        </PanelShell>
+      </main>
+    )
+  }
+
+  if (activePanel === 'cameras') {
+    return (
+      <main
+        className="flex-1 flex overflow-hidden min-h-0"
+        style={{ padding: isMobile ? 2 : 4 }}
+      >
+        <PanelShell panelId="cameras" title="IP Camera Management" icon="📷" style={{ flex: 1, overflow: 'auto' }}>
+          <Suspense fallback={<PanelFallback name="Cameras" />}>
+            <CameraGrid />
           </Suspense>
         </PanelShell>
       </main>

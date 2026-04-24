@@ -157,8 +157,9 @@ export function LeftSidebar() {
               </>
             )}
 
-            {/* Device Config + Settings */}
+            {/* Cameras + Device Config + Settings */}
             <Divider />
+            <PanelBtn panel={{ id: 'cameras',  label: 'IP Cameras',    icon: '📷' }} />
             <PanelBtn panel={{ id: 'device',   label: 'Device Config', icon: '🔌' }} />
             <PanelBtn panel={{ id: 'settings', label: 'Settings',      icon: '⚙' }} />
           </div>
