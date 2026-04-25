@@ -4,6 +4,7 @@ import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { ToastContainer } from '@/components/widgets/ToastContainer'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -37,6 +38,7 @@ export function App() {
       }}
     >
       <TopNavBar />
+      <ToastContainer />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         <LeftSidebar />
         {/* Mobile sidebar backdrop */}

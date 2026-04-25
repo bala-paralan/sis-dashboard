@@ -6,6 +6,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportAlertsCSV, downloadCSV } from '@/utils/exportCSV'
+import { useToast } from '@/hooks/useToast'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -86,6 +88,7 @@ export function AlertPanel() {
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
 
+  const toast = useToast()
   const prevCountRef = useRef(0)
 
   // Alert rate: build 24-point rolling history of alert counts per second
@@ -118,6 +121,13 @@ export function AlertPanel() {
 
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+    toast.success('Alert acknowledged.')
+  }
+
+  const handleExport = () => {
+    const csv      = exportAlertsCSV(displayed)
+    const dateStr  = new Date().toISOString().slice(0, 10)
+    downloadCSV(csv, `alerts_${dateStr}.csv`)
   }
 
   const critCount = allAlerts.filter(
@@ -191,7 +201,30 @@ export function AlertPanel() {
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
+        <button
+          onClick={handleExport}
+          disabled={displayed.length === 0}
+          title={displayed.length === 0 ? 'No alerts to export' : `Export ${displayed.length} alert(s) as CSV`}
+          className="ml-auto text-[10px] font-semibold px-[10px] h-7 rounded-full cursor-pointer tracking-[0.05em] transition-all duration-150 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            border: '1px solid var(--border-color)',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            if (displayed.length > 0) {
+              ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+          }}
+        >
+          ↓ CSV
+        </button>
+        <span className="text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
       </div>
