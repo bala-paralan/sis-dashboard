@@ -1,9 +1,10 @@
 /**
  * Camera management page — grid of camera cards + CRUD modals.
- * TASK-003: Camera grid UI.
+ * TASK-003: Camera grid UI. TASK-007: toast notifications on CRUD.
  */
 import { useEffect, useState } from 'react';
 import { useCameraStore } from '@/store/cameraStore';
+import { useToast } from '@/hooks/useToast';
 import type { Camera, CreateCameraInput, CameraStatus } from '@/api/cameras';
 import { CameraCard } from './CameraCard';
 import { CameraFormModal } from './CameraFormModal';
@@ -21,16 +22,41 @@ export const CameraGrid = () => {
     setFilterStatus, setFilterSiteId,
   } = useCameraStore();
 
+  const toast = useToast();
   const [showAdd,  setShowAdd]  = useState(false);
   const [editing,  setEditing]  = useState<Camera | null>(null);
 
   useEffect(() => { void loadCameras(); }, []);
 
-  const handleAdd = async (input: CreateCameraInput) => { await addCamera(input); };
+  const handleAdd = async (input: CreateCameraInput) => {
+    try {
+      await addCamera(input);
+      toast.success(`Camera "${input.name}" added successfully.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add camera');
+      throw err;
+    }
+  };
+
   const handleEdit = async (input: CreateCameraInput) => {
     if (!editing) return;
-    await editCamera(editing.id, input);
-    setEditing(null);
+    try {
+      await editCamera(editing.id, input);
+      toast.success(`Camera "${input.name}" updated.`);
+      setEditing(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update camera');
+      throw err;
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await removeCamera(id);
+      toast.success('Camera removed.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove camera');
+    }
   };
 
   const handleFilter = (status: CameraStatus | '') => {
@@ -111,7 +137,7 @@ export const CameraGrid = () => {
             testResult={testResults[cam.id]}
             onSelect={selectCamera}
             onEdit={setEditing}
-            onDelete={(id) => void removeCamera(id)}
+            onDelete={(id) => void handleDelete(id)}
             onTest={(id) => void testCamera(id)}
           />
         ))}

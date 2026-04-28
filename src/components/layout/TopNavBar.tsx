@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +22,13 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const authUser   = useAuthStore((s) => s.user)
+  const authLogout = useAuthStore((s) => s.logout)
+
+  async function handleLogout() {
+    await authLogout()
+    window.location.replace('/login')
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -118,9 +126,34 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {authUser ? (authUser.displayName ?? authUser.email) : 'Operator'}
         </span>
+        {authUser && (
+          <span className="text-[9px] text-text-muted font-bold uppercase tracking-[0.08em]">
+            {authUser.role}
+          </span>
+        )}
       </div>
+
+      {/* Logout button — only when authenticated */}
+      {authUser && (
+        <button
+          onClick={handleLogout}
+          title="Sign out"
+          className="h-[30px] px-[10px] rounded-[6px] border border-border-color bg-bg-tertiary text-[11px] text-text-secondary cursor-pointer transition-all duration-150 shrink-0"
+          style={{ fontWeight: 600 }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--alert-critical)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--alert-critical)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-color)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+          }}
+        >
+          Sign out
+        </button>
+      )}
     </header>
   )
 }
