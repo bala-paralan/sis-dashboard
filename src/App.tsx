@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
 import { ToastContainer } from '@/components/widgets/ToastContainer'
+import { KeyboardShortcutsModal } from '@/components/widgets/KeyboardShortcutsModal'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -13,6 +15,10 @@ export function App() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  useKeyboardShortcuts(openShortcuts)
 
   useEffect(() => {
     setReconnectFn(connect)
@@ -39,6 +45,7 @@ export function App() {
     >
       <TopNavBar />
       <ToastContainer />
+      {shortcutsOpen && <KeyboardShortcutsModal onClose={() => setShortcutsOpen(false)} />}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         <LeftSidebar />
         {/* Mobile sidebar backdrop */}
