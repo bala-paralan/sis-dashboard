@@ -21,6 +21,7 @@ const WeatherPanel      = lazy(() => import('@/components/panels/WeatherPanel').
 const SettingsPanel     = lazy(() => import('@/components/panels/SettingsPanel').then((m) => ({ default: m.SettingsPanel })))
 const DeviceConfigPage  = lazy(() => import('@/components/pages/DeviceConfigPage').then((m) => ({ default: m.DeviceConfigPage })))
 const CameraGrid        = lazy(() => import('@/components/cameras/CameraGrid').then((m) => ({ default: m.CameraGrid })))
+const SensorRegistry    = lazy(() => import('@/components/sensors/SensorRegistry').then((m) => ({ default: m.SensorRegistry })))
 
 function PanelFallback({ name }: { name: string }) {
   return (
@@ -132,6 +133,21 @@ export function PanelGrid() {
         <PanelShell panelId="cameras" title="IP Camera Management" icon="📷" style={{ flex: 1, overflow: 'auto' }}>
           <Suspense fallback={<PanelFallback name="Cameras" />}>
             <CameraGrid />
+          </Suspense>
+        </PanelShell>
+      </main>
+    )
+  }
+
+  if (activePanel === 'sensor-registry') {
+    return (
+      <main
+        className="flex-1 flex overflow-hidden min-h-0"
+        style={{ padding: isMobile ? 2 : 4 }}
+      >
+        <PanelShell panelId="sensor-registry" title="Sensor Registry" icon="📋" style={{ flex: 1, overflow: 'auto' }}>
+          <Suspense fallback={<PanelFallback name="Sensor Registry" />}>
+            <SensorRegistry />
           </Suspense>
         </PanelShell>
       </main>
