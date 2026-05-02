@@ -1,9 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { ToastContainer } from '@/components/widgets/ToastContainer'
+import { KeyboardShortcutsModal } from '@/components/widgets/KeyboardShortcutsModal'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -12,6 +15,9 @@ export function App() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  useKeyboardShortcuts(() => setShowShortcuts(true))
 
   useEffect(() => {
     setReconnectFn(connect)
@@ -47,6 +53,8 @@ export function App() {
         />
         <PanelGrid />
       </div>
+      <ToastContainer />
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
     </div>
   )
 }

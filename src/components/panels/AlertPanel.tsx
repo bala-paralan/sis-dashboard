@@ -6,6 +6,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportAlertsCSV } from '@/utils/exportCSV'
+import { useToast } from '@/hooks/useToast'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -114,10 +116,12 @@ export function AlertPanel() {
     prevCountRef.current = critHigh
   }, [allAlerts])
 
+  const toast = useToast()
   const displayed = useMemo(() => filteredAlerts(), [filteredAlerts, filter, allAlerts])
 
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+    toast.success('Alert acknowledged')
   }
 
   const critCount = allAlerts.filter(
@@ -194,6 +198,15 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        <button
+          onClick={() => exportAlertsCSV(displayed)}
+          disabled={displayed.length === 0}
+          title={displayed.length === 0 ? 'No alerts to export' : `Export ${displayed.length} alert(s) as CSV`}
+          className="text-[10px] px-2 h-7 rounded border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ⬇ Export CSV
+        </button>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
