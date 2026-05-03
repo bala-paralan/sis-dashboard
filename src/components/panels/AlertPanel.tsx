@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { downloadAlerts } from '@/utils/exportAlerts'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -194,6 +195,27 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        {/* Export dropdown */}
+        <div className="relative shrink-0">
+          <select
+            aria-label="Export alerts"
+            disabled={displayed.length === 0}
+            defaultValue=""
+            onChange={(e) => {
+              const fmt = e.target.value as 'csv' | 'json'
+              if (fmt) {
+                downloadAlerts(displayed, fmt)
+                e.target.value = ''
+              }
+            }}
+            className="text-[11px] px-1.5 h-7 disabled:opacity-40 cursor-pointer"
+          >
+            <option value="" disabled>⬇ Export</option>
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
