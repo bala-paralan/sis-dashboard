@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +22,8 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user   = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -118,9 +121,20 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.email ?? 'Operator'}
         </span>
       </div>
+
+      {/* Logout button */}
+      {user && (
+        <button
+          onClick={() => void logout()}
+          aria-label="Logout"
+          className="rounded-[6px] border border-border-color bg-bg-tertiary px-2 py-1 text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-primary transition shrink-0"
+        >
+          Logout
+        </button>
+      )}
     </header>
   )
 }
