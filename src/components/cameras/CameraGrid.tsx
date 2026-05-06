@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useCameraStore } from '@/store/cameraStore';
+import { useToast } from '@/hooks/useToast';
 import type { Camera, CreateCameraInput, CameraStatus } from '@/api/cameras';
 import { CameraCard } from './CameraCard';
 import { CameraFormModal } from './CameraFormModal';
@@ -23,14 +24,27 @@ export const CameraGrid = () => {
 
   const [showAdd,  setShowAdd]  = useState(false);
   const [editing,  setEditing]  = useState<Camera | null>(null);
+  const toast = useToast();
 
   useEffect(() => { void loadCameras(); }, []);
 
-  const handleAdd = async (input: CreateCameraInput) => { await addCamera(input); };
+  const handleAdd = async (input: CreateCameraInput) => {
+    await addCamera(input);
+    toast.success('Camera added successfully');
+  };
   const handleEdit = async (input: CreateCameraInput) => {
     if (!editing) return;
     await editCamera(editing.id, input);
     setEditing(null);
+    toast.success('Camera updated successfully');
+  };
+
+  const handleDelete = (id: string) => {
+    void removeCamera(id).then(() => {
+      toast.success('Camera deleted');
+    }).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete camera');
+    });
   };
 
   const handleFilter = (status: CameraStatus | '') => {
@@ -111,7 +125,7 @@ export const CameraGrid = () => {
             testResult={testResults[cam.id]}
             onSelect={selectCamera}
             onEdit={setEditing}
-            onDelete={(id) => void removeCamera(id)}
+            onDelete={handleDelete}
             onTest={(id) => void testCamera(id)}
           />
         ))}

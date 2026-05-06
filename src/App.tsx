@@ -4,6 +4,9 @@ import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { ToastContainer } from '@/components/widgets/ToastContainer'
+import { KeyboardShortcutsModal } from '@/components/widgets/KeyboardShortcutsModal'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -12,6 +15,7 @@ export function App() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+  const { helpOpen, setHelpOpen } = useKeyboardShortcuts()
 
   useEffect(() => {
     setReconnectFn(connect)
@@ -47,6 +51,8 @@ export function App() {
         />
         <PanelGrid />
       </div>
+      <ToastContainer />
+      {helpOpen && <KeyboardShortcutsModal onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }
