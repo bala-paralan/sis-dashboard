@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/auth/LoginPage'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -12,6 +14,10 @@ export function App() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+
+  const user         = useAuthStore((s) => s.user)
+  const authLoading  = useAuthStore((s) => s.loading)
+  const checkSession = useAuthStore((s) => s.checkSession)
 
   useEffect(() => {
     setReconnectFn(connect)
@@ -24,6 +30,28 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  // Restore session from stored token on first load
+  useEffect(() => {
+    checkSession()
+  }, [checkSession])
+
+  // Blank screen while we silently verify the stored token
+  if (authLoading && !user) {
+    return (
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={{ background: 'var(--bg-primary)' }}
+        data-testid="auth-loading"
+      >
+        <span className="text-text-muted text-[13px]">Loading…</span>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
 
   return (
     <div
