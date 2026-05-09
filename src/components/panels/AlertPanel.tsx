@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { alertsToCSV, downloadCSV, alertExportFilename } from '@/utils/formatters'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -120,6 +121,19 @@ export function AlertPanel() {
     acknowledgeAlert(id, '')
   }
 
+  const handleExportCSV = () => {
+    const rows = displayed.map((a) => ({
+      id: a.id,
+      timestamp: a.timestamp,
+      classification: a.classification,
+      threat_level: a.threat_level,
+      sensor_family: a.sensor_family ?? '',
+      location: a.location,
+      acknowledged: a.acknowledged,
+    }))
+    downloadCSV(alertsToCSV(rows), alertExportFilename())
+  }
+
   const critCount = allAlerts.filter(
     (a) => !a.acknowledged && a.threat_level === 'CRITICAL'
   ).length
@@ -191,8 +205,23 @@ export function AlertPanel() {
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
-          {displayed.length} shown
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-[10px] text-text-secondary">
+            {displayed.length} shown
+          </span>
+          <button
+            onClick={handleExportCSV}
+            disabled={displayed.length === 0}
+            title="Export filtered alerts as CSV"
+            className="text-[10px] px-2 h-6 rounded border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            ↓ Export CSV
+          </button>
         </span>
       </div>
 

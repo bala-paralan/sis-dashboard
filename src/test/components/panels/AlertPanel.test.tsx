@@ -157,4 +157,29 @@ describe('AlertPanel', () => {
     expect(screen.getByText('Alert u1 description')).toBeInTheDocument()
     expect(screen.queryByText('Alert a1 description')).not.toBeInTheDocument()
   })
+
+  it('renders the Export CSV button', () => {
+    render(<AlertPanel />)
+    expect(screen.getByText(/Export CSV/i)).toBeInTheDocument()
+  })
+
+  it('Export CSV button is disabled when no alerts are shown', () => {
+    useAlertStore.setState({
+      alerts: [],
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED' },
+    })
+    render(<AlertPanel />)
+    const btn = screen.getByText(/Export CSV/i).closest('button')
+    expect(btn).toBeDisabled()
+  })
+
+  it('Export CSV button is enabled when alerts are shown', () => {
+    useAlertStore.setState({
+      alerts: [mockAlert('exp1', 'HIGH', false)],
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED' },
+    })
+    render(<AlertPanel />)
+    const btn = screen.getByText(/Export CSV/i).closest('button')
+    expect(btn).not.toBeDisabled()
+  })
 })

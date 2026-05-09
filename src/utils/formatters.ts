@@ -70,3 +70,46 @@ export function formatCoords(lat: number, lon: number): string {
   const lonDir = lon >= 0 ? 'E' : 'W'
   return `${Math.abs(lat).toFixed(4)}°${latDir}, ${Math.abs(lon).toFixed(4)}°${lonDir}`
 }
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+export interface AlertCSVRow {
+  id: string
+  timestamp: string
+  classification: string
+  threat_level: string
+  sensor_family: string
+  location: string
+  acknowledged: boolean
+}
+
+export function alertsToCSV(alerts: AlertCSVRow[]): string {
+  const HEADERS = ['id', 'timestamp', 'classification', 'threat_level', 'sensor_family', 'location', 'acknowledged']
+  const escape = (v: string | boolean) => {
+    const s = String(v)
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const rows = alerts.map((a) =>
+    [a.id, a.timestamp, a.classification, a.threat_level, a.sensor_family, a.location, a.acknowledged]
+      .map(escape)
+      .join(',')
+  )
+  return [HEADERS.join(','), ...rows].join('\n')
+}
+
+export function downloadCSV(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function alertExportFilename(): string {
+  const now = new Date()
+  const date = now.toISOString().slice(0, 10)
+  const hhmm = now.toTimeString().slice(0, 5).replace(':', '')
+  return `sis-alerts-${date}_${hhmm}.csv`
+}

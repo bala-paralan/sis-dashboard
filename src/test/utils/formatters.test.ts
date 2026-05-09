@@ -6,6 +6,9 @@ import {
   getThreatLevelColor,
   getSensorFamilyColor,
   formatCoords,
+  alertsToCSV,
+  alertExportFilename,
+  type AlertCSVRow,
 } from '@/utils/formatters'
 
 // ---------------------------------------------------------------------------
@@ -178,5 +181,99 @@ describe('formatCoords', () => {
 
   it('(21.9452, 88.1234) formats to "21.9452°N, 88.1234°E"', () => {
     expect(formatCoords(21.9452, 88.1234)).toBe('21.9452°N, 88.1234°E')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// alertsToCSV
+// ---------------------------------------------------------------------------
+const sampleAlerts: AlertCSVRow[] = [
+  {
+    id: 'ALT-001',
+    timestamp: '2026-05-09T10:30:00.000Z',
+    classification: 'INTRUSION_DETECTED',
+    threat_level: 'HIGH',
+    sensor_family: 'Seismic',
+    location: 'Sector 4 SW',
+    acknowledged: false,
+  },
+  {
+    id: 'ALT-002',
+    timestamp: '2026-05-09T10:31:00.000Z',
+    classification: 'ANIMAL_CROSSING',
+    threat_level: 'LOW',
+    sensor_family: 'Acoustic',
+    location: 'Sector 1 NW',
+    acknowledged: true,
+  },
+]
+
+describe('alertsToCSV', () => {
+  it('includes a header row as the first line', () => {
+    const csv = alertsToCSV(sampleAlerts)
+    const firstLine = csv.split('\n')[0]
+    expect(firstLine).toBe('id,timestamp,classification,threat_level,sensor_family,location,acknowledged')
+  })
+
+  it('produces N+1 lines (header + one row per alert)', () => {
+    const csv = alertsToCSV(sampleAlerts)
+    const lines = csv.split('\n')
+    expect(lines).toHaveLength(sampleAlerts.length + 1)
+  })
+
+  it('encodes the alert id in the correct column', () => {
+    const csv = alertsToCSV(sampleAlerts)
+    const dataRow = csv.split('\n')[1]
+    expect(dataRow.startsWith('ALT-001,')).toBe(true)
+  })
+
+  it('encodes the acknowledged boolean as a string', () => {
+    const csv = alertsToCSV(sampleAlerts)
+    const rows = csv.split('\n').slice(1)
+    expect(rows[0]).toContain('false')
+    expect(rows[1]).toContain('true')
+  })
+
+  it('escapes values that contain commas with double-quotes', () => {
+    const withComma: AlertCSVRow[] = [
+      {
+        id: 'ALT-003',
+        timestamp: '2026-05-09T10:32:00.000Z',
+        classification: 'EVENT, CRITICAL',
+        threat_level: 'CRITICAL',
+        sensor_family: 'Optical',
+        location: 'Gate, NW',
+        acknowledged: false,
+      },
+    ]
+    const csv = alertsToCSV(withComma)
+    const row = csv.split('\n')[1]
+    expect(row).toContain('"EVENT, CRITICAL"')
+    expect(row).toContain('"Gate, NW"')
+  })
+
+  it('returns only a header row when alerts array is empty', () => {
+    const csv = alertsToCSV([])
+    const lines = csv.split('\n').filter(Boolean)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('id')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// alertExportFilename
+// ---------------------------------------------------------------------------
+describe('alertExportFilename', () => {
+  it('returns a string starting with "sis-alerts-"', () => {
+    expect(alertExportFilename()).toMatch(/^sis-alerts-/)
+  })
+
+  it('returns a filename ending with ".csv"', () => {
+    expect(alertExportFilename()).toMatch(/\.csv$/)
+  })
+
+  it('embeds the current date in YYYY-MM-DD format', () => {
+    const today = new Date().toISOString().slice(0, 10)
+    expect(alertExportFilename()).toContain(today)
   })
 })
