@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/pages/LoginPage'
 
-export function App() {
-  const theme = useSystemStore((s) => s.theme)
+function Dashboard() {
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
@@ -20,10 +21,6 @@ export function App() {
   useEffect(() => {
     setSendMessageFn(sendMessage)
   }, [sendMessage, setSendMessageFn])
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
 
   return (
     <div
@@ -49,4 +46,21 @@ export function App() {
       </div>
     </div>
   )
+}
+
+export function App() {
+  const theme   = useSystemStore((s) => s.theme)
+  const user    = useAuthStore((s) => s.user)
+  const restore = useAuthStore((s) => s.restore)
+
+  useEffect(() => {
+    void restore()
+  }, [restore])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  if (!user) return <LoginPage />
+  return <Dashboard />
 }
