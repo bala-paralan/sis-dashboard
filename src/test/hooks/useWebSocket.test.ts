@@ -83,7 +83,7 @@ describe('useWebSocket', () => {
     it('sets connectionStatus to "connected" after WebSocket opens', async () => {
       renderHook(() => useWebSocket())
       await act(async () => {
-        vi.runAllTimers()
+        vi.advanceTimersByTime(10)
       })
       expect(useSystemStore.getState().connectionStatus).toBe('connected')
     })
@@ -91,7 +91,7 @@ describe('useWebSocket', () => {
     it('sends SUBSCRIBE message on open', async () => {
       renderHook(() => useWebSocket())
       await act(async () => {
-        vi.runAllTimers()
+        vi.advanceTimersByTime(10)
       })
       const ws = TrackingMockWS.instances[0]
       expect(ws.send).toHaveBeenCalledWith(
@@ -101,7 +101,7 @@ describe('useWebSocket', () => {
 
     it('sets connectionStatus to "disconnected" when WS closes', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
       act(() => {
         ws.onclose!(new CloseEvent('close'))
@@ -111,7 +111,7 @@ describe('useWebSocket', () => {
 
     it('calls ws.close() on unmount', async () => {
       const { unmount } = renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
       unmount()
       expect(ws.close).toHaveBeenCalled()
@@ -121,7 +121,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — SENSOR_DATA', () => {
     it('calls updateSensor in sensorStore when SENSOR_DATA arrives', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       const payload: SensorPayload = {
@@ -135,6 +135,8 @@ describe('useWebSocket', () => {
         sensor_status: 'ONLINE',
       }
       dispatchMessage(ws, 'SENSOR_DATA', payload)
+      // SENSOR_DATA is throttled — advance past the 100ms flush window
+      await act(async () => { vi.advanceTimersByTime(150) })
       expect(useSensorStore.getState().sensors.has('S01-GEO')).toBe(true)
     })
   })
@@ -142,7 +144,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — AIML_TRACK_UPDATE', () => {
     it('updates tracks in sensorStore', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       const tracks: Track[] = [
@@ -167,7 +169,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — AIML_ALERT', () => {
     it('adds alert to alertStore', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       dispatchMessage(ws, 'AIML_ALERT', {
@@ -189,7 +191,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — THREAT_ASSESSMENT', () => {
     it('stores threat assessment in alertStore', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       const assessment: ThreatAssessment = {
@@ -211,7 +213,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — SYSTEM_HEALTH', () => {
     it('stores system health in systemStore', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       const health: SystemHealth = {
@@ -240,7 +242,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — SCENARIO_CHANGE', () => {
     it('updates scenario in systemStore', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       dispatchMessage(ws, 'SCENARIO_CHANGE', { current: 'INTRUSION' })
@@ -251,7 +253,7 @@ describe('useWebSocket', () => {
   describe('message dispatch — malformed JSON', () => {
     it('does not crash when message is not valid JSON', async () => {
       renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       expect(() => {
@@ -265,7 +267,7 @@ describe('useWebSocket', () => {
   describe('sendMessage', () => {
     it('sendMessage sends JSON string over the socket when OPEN', async () => {
       const { result } = renderHook(() => useWebSocket())
-      await act(async () => { vi.runAllTimers() })
+      await act(async () => { vi.advanceTimersByTime(10) })
       const ws = TrackingMockWS.instances[0]
 
       act(() => {

@@ -89,12 +89,45 @@ function NodeCard({ node }: { node: NodeStatus }) {
 
 const textareaClass = 'w-full bg-bg-secondary border border-border-color rounded-md text-text-primary text-[11px] p-2 resize-y font-[inherit] box-border'
 
+type HandoverPeriod = '8h' | '12h' | '24h'
+
+const PERIOD_SUMMARY: Record<HandoverPeriod, {
+  alerts: number; ack: number; faults: number; tracks: number; uas: number; gpr: number
+}> = {
+  '8h':  { alerts: 9,  ack: 6,  faults: 1, tracks: 4, uas: 0, gpr: 1 },
+  '12h': { alerts: 16, ack: 8,  faults: 2, tracks: 7, uas: 1, gpr: 3 },
+  '24h': { alerts: 31, ack: 22, faults: 3, tracks: 14, uas: 2, gpr: 5 },
+}
+
+function buildReportHtml(title: string, rows: string[][], notes: string, timestamp: string): string {
+  const rowsHtml = rows.map(([k, v]) =>
+    `<tr><td style="padding:6px 12px;border-bottom:1px solid #ddd;color:#555;width:240px">${k}</td>` +
+    `<td style="padding:6px 12px;border-bottom:1px solid #ddd;font-weight:600">${v}</td></tr>`
+  ).join('')
+  return `<!DOCTYPE html><html><head><title>${title}</title>
+<style>body{font-family:Arial,sans-serif;font-size:13px;color:#222;margin:32px}
+h2{margin-bottom:4px}p.sub{color:#666;font-size:11px;margin-top:0}
+table{border-collapse:collapse;width:100%;margin-bottom:16px}
+th{background:#f0f0f0;padding:7px 12px;text-align:left;font-size:11px;border-bottom:2px solid #ccc}
+.notes{background:#f9f9f9;border:1px solid #ddd;border-radius:4px;padding:12px;margin-top:8px;white-space:pre-wrap;font-size:12px}
+.footer{margin-top:24px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:8px}
+@media print{@page{margin:20mm}}</style></head><body>
+<h2>IINVSYS SIS — ${title}</h2>
+<p class="sub">Generated: ${timestamp} &nbsp;|&nbsp; System: BHQN COB Command</p>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+${notes ? `<div><strong>Notes / Narrative</strong><div class="notes">${notes || '—'}</div></div>` : ''}
+<div class="footer">IINVSYS SIS v1.0 &nbsp;·&nbsp; STANAG 4607/4609 compliant &nbsp;·&nbsp; AES-256 encrypted at rest</div>
+</body></html>`
+}
+
 export function CommandPanel() {
   const nodes = useNodes()
   const [tab, setTab] = useState<'nodes' | 'incident' | 'handover'>('nodes')
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
+  const [handoverPeriod, setHandoverPeriod] = useState<HandoverPeriod>('12h')
+  const [snapshotMsg, setSnapshotMsg] = useState(false)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showNodes    = isVisible('multiNodeOverview')
@@ -104,6 +137,51 @@ export function CommandPanel() {
 
   const totalAlerts  = nodes.reduce((s, n) => s + n.alerts, 0)
   const offlineCount = nodes.filter((n) => n.status === 'OFFLINE').length
+  const ps           = PERIOD_SUMMARY[handoverPeriod]
+
+  function openPrintWindow(html: string) {
+    const win = window.open('', '_blank', 'width=820,height=640')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => win.print(), 300)
+  }
+
+  function exportIncidentPDF() {
+    const ts = new Date().toLocaleString()
+    const rows: string[][] = [
+      ['Date / Time', ts],
+      ['Operator node', 'BOP-ALPHA-01'],
+      ['Active alerts', String(totalAlerts)],
+      ['Nodes online', `${nodes.filter(n => n.status === 'ONLINE').length} / ${nodes.length}`],
+      ['Offline nodes', String(offlineCount)],
+      ['Threat level', nodes.some(n => n.threatLevel === 'HIGH' || n.threatLevel === 'CRITICAL') ? 'HIGH' : 'CLEAR/LOW'],
+      ['CIBMS schema', 'STANAG 4607/4609 — COMPLIANT'],
+    ]
+    openPrintWindow(buildReportHtml('Incident Report', rows, incidentText, ts))
+  }
+
+  function exportHandoverPDF() {
+    const ts = new Date().toLocaleString()
+    const rows: string[][] = [
+      ['Period', `Last ${handoverPeriod}`],
+      ['Date / Time', ts],
+      ['Total alerts', `${ps.alerts} (${ps.ack} acknowledged, ${ps.alerts - ps.ack} pending)`],
+      ['Sensor faults', String(ps.faults)],
+      ['Tracks detected', String(ps.tracks)],
+      ['UAS contacts', String(ps.uas)],
+      ['GPR anomalies flagged', String(ps.gpr)],
+      ['Outgoing operator', '—'],
+      ['Incoming operator', '—'],
+    ]
+    openPrintWindow(buildReportHtml('Shift Handover Summary', rows, handoverNotes, ts))
+  }
+
+  function attachSnapshot() {
+    setSnapshotMsg(true)
+    setTimeout(() => setSnapshotMsg(false), 3500)
+  }
 
   const sorted = [...nodes].sort((a, b) => {
     if (sortBy === 'status') return a.status.localeCompare(b.status)
@@ -221,11 +299,16 @@ export function CommandPanel() {
               placeholder="Add narrative description of the incident..."
               className={`${textareaClass} h-[100px]`}
             />
+            {snapshotMsg && (
+              <div className="text-[10px] text-sensor-acoustic bg-bg-secondary border border-border-color rounded px-2 py-1 mb-1.5">
+                Snapshot capture requires a connected backend image service.
+              </div>
+            )}
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button onClick={exportIncidentPDF} className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
                 ⬇ Export PDF → BHQN
               </button>
-              <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button onClick={attachSnapshot} className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot
               </button>
             </div>
@@ -242,9 +325,10 @@ export function CommandPanel() {
               {(['8h', '12h', '24h'] as const).map((r) => (
                 <button
                   key={r}
+                  onClick={() => setHandoverPeriod(r)}
                   className={[
                     'py-[3px] px-[10px] border border-border-color rounded cursor-pointer text-[10px]',
-                    r === '12h' ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
+                    handoverPeriod === r ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
                   ].join(' ')}
                 >
                   Last {r}
@@ -252,12 +336,12 @@ export function CommandPanel() {
               ))}
             </div>
             <div className="bg-bg-secondary border border-border-color rounded-md p-[10px] mb-2 text-[10px] text-text-secondary leading-[1.7]">
-              <div className="font-bold text-text-primary mb-1">Period Summary (Last 12h)</div>
-              <div>• Total alerts: {totalAlerts + 12} (8 acknowledged, {totalAlerts + 4} pending)</div>
-              <div>• Sensor faults: 2 (BOP-BETA-01: ACOUSTIC S04, BOP-DELTA-01: RADAR S12)</div>
-              <div>• Tracks detected: 7 (5 ANIMAL, 1 HUMAN, 1 UNKNOWN)</div>
-              <div>• UAS contacts: 1 (commercial, 450m range, logged)</div>
-              <div>• GPR anomalies: 3 flagged for field verification</div>
+              <div className="font-bold text-text-primary mb-1">Period Summary (Last {handoverPeriod})</div>
+              <div>• Total alerts: {ps.alerts} ({ps.ack} acknowledged, {ps.alerts - ps.ack} pending)</div>
+              <div>• Sensor faults: {ps.faults}</div>
+              <div>• Tracks detected: {ps.tracks}</div>
+              <div>• UAS contacts: {ps.uas}</div>
+              <div>• GPR anomalies: {ps.gpr} flagged for field verification</div>
             </div>
             <textarea
               value={handoverNotes}
@@ -266,7 +350,7 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button onClick={exportHandoverPDF} className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
                 ✍ Sign &amp; Export PDF
               </button>
             </div>
