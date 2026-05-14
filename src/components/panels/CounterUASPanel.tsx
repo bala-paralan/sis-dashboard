@@ -1,5 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useSensorStore } from '@/store/sensorStore'
+import { useSystemStore } from '@/store/systemStore'
+import { DemoModeBanner } from '@/components/widgets/DemoModeBanner'
+import { ConfirmModal } from '@/components/widgets/ConfirmModal'
+import { ActionToast } from '@/components/widgets/ActionToast'
+import { exportTracksKML } from '@/utils/exporters'
 
 interface DroneContact {
   id: string
@@ -109,11 +115,68 @@ function RFBar({ value, max = 100 }: { value: number; max?: number }) {
   )
 }
 
+function useContacts(): DroneContact[] {
+  const tracks = useSensorStore((s) => s.tracks)
+  const status = useSystemStore((s) => s.connectionStatus)
+  const demoContacts = useDroneContacts()
+
+  return useMemo(() => {
+    if (status === 'connected' && tracks.length > 0) {
+      const RF_SIGS = ['2.4 GHz burst', '5.8 GHz FHSS', '900 MHz LR', '433 MHz OOK', 'Encrypted link']
+      return tracks.map((t) => ({
+        id: t.track_id,
+        bearing_deg: t.heading,
+        elevation_deg: 15,
+        range_m: t.range_m,
+        rfSignature: RF_SIGS[parseInt(t.track_id, 36) % RF_SIGS.length] ?? RF_SIGS[0],
+        classification: (t.class === 'UNKNOWN' ? 'UNKNOWN' : 'COMMERCIAL') as DroneContact['classification'],
+        confidence: Math.round(t.confidence * 100),
+        firstSeen: Date.now() - t.age_frames * 100,
+        lastSeen: Date.now(),
+        altitude_m: 50,
+        velocity_ms: parseFloat(t.velocity.toFixed(1)),
+      }))
+    }
+    return demoContacts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracks, status])
+}
+
 export function CounterUASPanel() {
-  const contacts = useDroneContacts()
+  const contacts = useContacts()
+  const sendMessage = useSystemStore((s) => s.sendMessage)
   const [alarmActive, setAlarmActive] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [kmlExported, setKmlExported] = useState(false)
+  const [confirmEngage, setConfirmEngage] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    setToast({ msg, type })
+  }
+
+  function handleNotifyQRT(contactId: string, threatLevel: string) {
+    sendMessage({ type: 'QRT_NOTIFY', payload: { contact_id: contactId, threat_level: threatLevel } })
+    showToast(`QRT notified — UAS-${contactId}`)
+  }
+
+  function handleEngageConfirmed(contactId: string) {
+    sendMessage({ type: 'QRT_ENGAGE', payload: { contact_id: contactId } })
+    setConfirmEngage(null)
+    showToast(`QRT engagement ordered — UAS-${contactId}`)
+  }
+
+  function handleLogEngagement(contactId: string) {
+    sendMessage({ type: 'ENGAGEMENT_LOG', payload: { contact_id: contactId, timestamp: new Date().toISOString() } })
+    showToast(`Engagement logged — UAS-${contactId}`)
+  }
+
+  function handleExportKML() {
+    exportTracksKML(historyRef.current)
+    setKmlExported(true)
+    setTimeout(() => setKmlExported(false), 2500)
+  }
 
   const showThreatDisplay = isVisible('counterUasThreatDisplay')
   const showPlayback = isVisible('droneTrackPlayback')
@@ -127,6 +190,20 @@ export function CounterUASPanel() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {confirmEngage && (
+        <ConfirmModal
+          title="Engage QRT"
+          message={`Confirm QRT engagement order for contact UAS-${confirmEngage}. This action will be logged.`}
+          confirmLabel="Engage"
+          danger
+          onConfirm={() => handleEngageConfirmed(confirmEngage)}
+          onCancel={() => setConfirmEngage(null)}
+        />
+      )}
+      {toast && (
+        <ActionToast message={toast.msg} type={toast.type} onDone={() => setToast(null)} />
+      )}
+      <DemoModeBanner />
       {/* Toolbar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span
@@ -155,6 +232,7 @@ export function CounterUASPanel() {
           {alarmActive ? '🔔 ALARM ON' : '🔕 Alarm Off'}
         </button>
         <button
+          onClick={() => contacts.length > 0 ? handleNotifyQRT(contacts[0].id, contacts[0].classification) : showToast('No active contacts', 'error')}
           className="px-2 py-0.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
         >
           ⚡ Notify QRT
@@ -236,11 +314,13 @@ export function CounterUASPanel() {
                       {selectedId === c.id && (
                         <div className="mt-2 flex gap-1.5">
                           <button
+                            onClick={() => setConfirmEngage(c.id)}
                             className="flex-1 py-1 px-1.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-semibold"
                           >
                             ⚡ Engage QRT
                           </button>
                           <button
+                            onClick={() => handleLogEngagement(c.id)}
                             className="flex-1 py-1 px-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                           >
                             📝 Log Engagement
@@ -276,9 +356,11 @@ export function CounterUASPanel() {
                   </button>
                 ))}
                 <button
-                  className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+                  onClick={handleExportKML}
+                  className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded cursor-pointer text-[10px]"
+                  style={{ color: kmlExported ? 'var(--sensor-acoustic)' : 'var(--text-secondary)' }}
                 >
-                  ⬇ Export KML
+                  {kmlExported ? '✔ Exported!' : '⬇ Export KML'}
                 </button>
               </div>
               <div className="flex flex-col gap-[3px] max-h-[100px] overflow-y-auto">

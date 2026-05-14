@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
+import { logout as apiLogout } from '@/api/auth'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +24,15 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const storeLogout = useAuthStore((s) => s.logout)
+  const user = useAuthStore((s) => s.user)
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await apiLogout().catch(() => undefined)
+    storeLogout()
+    navigate('/login', { replace: true })
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -111,15 +123,23 @@ export function TopNavBar() {
       {/* Theme toggle */}
       <ThemeToggle />
 
-      {/* User badge */}
+      {/* User badge + logout */}
       <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
         <span
           className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.email ?? 'Operator'}
         </span>
+        <button
+          onClick={handleLogout}
+          title="Sign out"
+          className="ml-1 text-[10px] text-text-secondary cursor-pointer border-none bg-transparent p-0 leading-none"
+          aria-label="Sign out"
+        >
+          ⏻
+        </button>
       </div>
     </header>
   )

@@ -3,9 +3,10 @@
 // Full alert management panel with filtering, sparkline, ack flow
 // ============================================================
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportAlertsCSV } from '@/utils/exporters'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -120,6 +121,13 @@ export function AlertPanel() {
     acknowledgeAlert(id, '')
   }
 
+  const [exportedMsg, setExportedMsg] = useState(false)
+  const handleExportCSV = useCallback(() => {
+    exportAlertsCSV(displayed)
+    setExportedMsg(true)
+    setTimeout(() => setExportedMsg(false), 2500)
+  }, [displayed])
+
   const critCount = allAlerts.filter(
     (a) => !a.acknowledged && a.threat_level === 'CRITICAL'
   ).length
@@ -191,8 +199,15 @@ export function AlertPanel() {
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-text-secondary">
           {displayed.length} shown
+          <button
+            onClick={handleExportCSV}
+            className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded cursor-pointer text-[10px]"
+            style={{ color: exportedMsg ? 'var(--sensor-acoustic)' : 'var(--text-secondary)' }}
+          >
+            {exportedMsg ? '✔ Exported!' : '⬇ CSV'}
+          </button>
         </span>
       </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { exportIncidentPDF } from '@/utils/exporters'
 
 interface NodeStatus {
   id: string
@@ -95,14 +96,31 @@ export function CommandPanel() {
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
+  const [pdfExported, setPdfExported] = useState(false)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
   const showHandover = isVisible('shiftHandoverSummary')
+
   const showCibms    = isVisible('cibmsNatgridFeedMonitor')
 
   const totalAlerts  = nodes.reduce((s, n) => s + n.alerts, 0)
+
+  function handleExportPDF() {
+    const summary = [
+      `Date/Time: ${new Date().toLocaleString()}`,
+      `Node: BOP-ALPHA-01 | Operator: —`,
+      `Active alerts: ${totalAlerts} | Nodes online: ${nodes.filter((n) => n.status === 'ONLINE').length}/${nodes.length}`,
+      `Threat level: ${nodes.some((n) => n.threatLevel === 'HIGH') ? 'HIGH' : 'CLEAR/LOW'}`,
+      '',
+      'Narrative:',
+      incidentText || '(no narrative provided)',
+    ].join('\n')
+    exportIncidentPDF(`Incident Report — ${new Date().toLocaleDateString()}`, summary)
+    setPdfExported(true)
+    setTimeout(() => setPdfExported(false), 2500)
+  }
   const offlineCount = nodes.filter((n) => n.status === 'OFFLINE').length
 
   const sorted = [...nodes].sort((a, b) => {
@@ -222,8 +240,12 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
-                ⬇ Export PDF → BHQN
+              <button
+                onClick={handleExportPDF}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+                style={{ opacity: pdfExported ? 0.7 : 1 }}
+              >
+                {pdfExported ? '✔ Opened Print Dialog' : '⬇ Export PDF → BHQN'}
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot

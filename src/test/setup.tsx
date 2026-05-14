@@ -73,6 +73,14 @@ class MockWebSocket {
 }
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket
 
+// ── Mock URL object-URL methods (jsdom doesn't implement them) ────────────
+if (typeof URL.createObjectURL === 'undefined') {
+  URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+}
+if (typeof URL.revokeObjectURL === 'undefined') {
+  URL.revokeObjectURL = vi.fn()
+}
+
 // ── Mock localStorage ──────────────────────────────────────────────────────
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
