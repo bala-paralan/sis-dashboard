@@ -11,6 +11,7 @@ interface SystemState {
   activePanel: string
   sidebarCollapsed: boolean
   mobileSidebarOpen: boolean
+  mutedAlerts: boolean
   reconnectFn: (() => void) | null
   sendMessageFn: ((msg: object) => void) | null
   setHealth: (h: SystemHealth) => void
@@ -22,6 +23,7 @@ interface SystemState {
   toggleSidebar: () => void
   setMobileSidebarOpen: (open: boolean) => void
   toggleMobileSidebar: () => void
+  toggleMutedAlerts: () => void
   setReconnectFn: (fn: () => void) => void
   reconnect: () => void
   setSendMessageFn: (fn: (msg: object) => void) => void
@@ -43,6 +45,7 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
   activePanel: 'map',
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
+  mutedAlerts: false,
   reconnectFn: null,
   sendMessageFn: null,
 
@@ -86,6 +89,10 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
 
   toggleMobileSidebar: () => {
     set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen }))
+  },
+
+  toggleMutedAlerts: () => {
+    set((state) => ({ mutedAlerts: !state.mutedAlerts }))
   },
 
   setReconnectFn: (fn: () => void) => {
