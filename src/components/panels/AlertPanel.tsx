@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportAlertsCSV } from '@/utils/formatters'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -85,6 +86,7 @@ export function AlertPanel() {
   const setFilter = useAlertStore((s) => s.setFilter)
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
+  const dismissAlert = useAlertStore((s) => s.dismissAlert)
 
   const prevCountRef = useRef(0)
 
@@ -118,6 +120,17 @@ export function AlertPanel() {
 
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+  }
+
+  const handleExportCSV = () => {
+    const csv = exportAlertsCSV(displayed)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `alerts-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const critCount = allAlerts.filter(
@@ -194,6 +207,14 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        <button
+          onClick={handleExportCSV}
+          disabled={displayed.length === 0}
+          className="text-[10px] px-2 h-7 rounded border border-white/20 text-gray-400 hover:bg-white/10 disabled:opacity-40"
+        >
+          ⬇ CSV
+        </button>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
@@ -205,7 +226,7 @@ export function AlertPanel() {
           </div>
         ) : (
           displayed.map((alert) => (
-            <AlertRow key={alert.id} alert={alert} onAck={handleAck} />
+            <AlertRow key={alert.id} alert={alert} onAck={handleAck} onDismiss={dismissAlert} />
           ))
         )}
       </div>

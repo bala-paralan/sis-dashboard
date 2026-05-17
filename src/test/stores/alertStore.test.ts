@@ -191,5 +191,47 @@ describe('useAlertStore', () => {
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('a1')
     })
+
+    it('excludes dismissed alerts from filteredAlerts regardless of other filters', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a1', acknowledged: false }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a2', acknowledged: false }))
+        useAlertStore.getState().dismissAlert('a1')
+        useAlertStore.getState().setFilter({ threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL' })
+      })
+      const result = useAlertStore.getState().filteredAlerts()
+      expect(result.find((a) => a.id === 'a1')).toBeUndefined()
+      expect(result.find((a) => a.id === 'a2')).toBeDefined()
+    })
+  })
+
+  describe('dismissAlert', () => {
+    it('sets dismissed=true on the matching alert', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'alert-001' }))
+        useAlertStore.getState().dismissAlert('alert-001')
+      })
+      const alert = useAlertStore.getState().alerts.find((a) => a.id === 'alert-001')
+      expect(alert?.dismissed).toBe(true)
+    })
+
+    it('does not modify other alerts when dismissing one', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a1' }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a2' }))
+        useAlertStore.getState().dismissAlert('a1')
+      })
+      const other = useAlertStore.getState().alerts.find((a) => a.id === 'a2')
+      expect(other?.dismissed).toBeUndefined()
+    })
+
+    it('keeps the dismissed alert in the alerts array (just flagged, not removed)', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a1' }))
+        useAlertStore.getState().dismissAlert('a1')
+      })
+      expect(useAlertStore.getState().alerts).toHaveLength(1)
+      expect(useAlertStore.getState().alerts[0].dismissed).toBe(true)
+    })
   })
 })

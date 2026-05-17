@@ -1,6 +1,6 @@
 # TASK-006: Alert Management Enhancements
 
-## Status: TODO
+## Status: DONE
 
 ## Objective
 Enhance the alert panel with acknowledge, dismiss, filter-by-severity, and CSV export capabilities.

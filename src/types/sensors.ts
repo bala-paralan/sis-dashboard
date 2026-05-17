@@ -76,6 +76,7 @@ export interface Alert {
   classification: string;
   threat_level: ThreatLevel;
   acknowledged: boolean;
+  dismissed?: boolean;
   annotation?: string;
   escalated?: boolean;
   sensor_family?: SensorFamily;

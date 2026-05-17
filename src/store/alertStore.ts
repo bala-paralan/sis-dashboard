@@ -15,6 +15,7 @@ interface AlertState {
   filter: AlertFilter
   addAlert: (alert: Alert) => void
   acknowledgeAlert: (id: string, comment: string) => void
+  dismissAlert: (id: string) => void
   setThreatAssessment: (ta: ThreatAssessment) => void
   setFilter: (filter: Partial<AlertFilter>) => void
   filteredAlerts: () => Alert[]
@@ -44,6 +45,12 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
     }))
   },
 
+  dismissAlert: (id: string) => {
+    set((state) => ({
+      alerts: state.alerts.map((a) => a.id === id ? { ...a, dismissed: true } : a),
+    }))
+  },
+
   setThreatAssessment: (ta: ThreatAssessment) => {
     set({ threatAssessment: ta })
   },
@@ -55,6 +62,7 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
   filteredAlerts: () => {
     const { alerts, filter } = get()
     return alerts.filter((alert) => {
+      if (alert.dismissed) return false
       if (filter.threatLevel !== 'ALL' && alert.threat_level !== filter.threatLevel) {
         return false
       }

@@ -70,3 +70,26 @@ export function formatCoords(lat: number, lon: number): string {
   const lonDir = lon >= 0 ? 'E' : 'W'
   return `${Math.abs(lat).toFixed(4)}°${latDir}, ${Math.abs(lon).toFixed(4)}°${lonDir}`
 }
+
+export function exportAlertsCSV(alerts: Array<{
+  id: string
+  threat_level: string
+  classification: string
+  description: string
+  timestamp: string
+  acknowledged: boolean
+}>): string {
+  const header = 'id,severity,classification,description,timestamp,acknowledged'
+  const rows = alerts.map((a) => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    return [
+      escape(a.id),
+      escape(a.threat_level),
+      escape(a.classification),
+      escape(a.description),
+      escape(a.timestamp),
+      String(a.acknowledged),
+    ].join(',')
+  })
+  return [header, ...rows].join('\n')
+}

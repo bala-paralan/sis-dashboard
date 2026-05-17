@@ -4,7 +4,8 @@ import { formatRelativeTime, getThreatLevelColor } from '@/utils/formatters'
 
 interface AlertRowProps {
   alert: Alert
-  onAck: (id: string) => void
+  onAck:     (id: string) => void
+  onDismiss: (id: string) => void
 }
 
 const LEVEL_INITIAL: Record<string, string> = {
@@ -15,7 +16,7 @@ const LEVEL_INITIAL: Record<string, string> = {
   CLEAR:    '—',
 }
 
-export function AlertRow({ alert, onAck }: AlertRowProps) {
+export function AlertRow({ alert, onAck, onDismiss }: AlertRowProps) {
   const [ackComment, setAckComment] = useState('')
   const [showAckInput, setShowAckInput] = useState(false)
 
@@ -93,6 +94,13 @@ export function AlertRow({ alert, onAck }: AlertRowProps) {
           ) : (
             <span className="text-[10px] text-sensor-acoustic font-semibold">ACKED</span>
           )}
+          <button
+            aria-label="Dismiss alert"
+            onClick={(e) => { e.stopPropagation(); onDismiss(alert.id) }}
+            className="btn btn-ghost text-[10px] py-[2px] px-2 rounded text-gray-500 hover:text-red-400"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
