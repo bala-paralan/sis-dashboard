@@ -1,6 +1,6 @@
 # TASK-005: Authentication Login Page
 
-## Status: TODO
+## Status: DONE
 
 ## Objective
 Add a proper authentication flow: a Login page that issues a JWT, stores it, and redirects to the dashboard. Wire the existing `src/api/auth.ts` to the UI.
