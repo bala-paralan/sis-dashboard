@@ -1,6 +1,6 @@
 # TASK-007: DeviceConfigPage Tests
 
-## Status: TODO
+## Status: DONE
 
 ## Objective
 Add a Vitest/React Testing Library test suite for `src/components/pages/DeviceConfigPage.tsx`, which currently has no coverage.
