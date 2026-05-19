@@ -3,10 +3,13 @@ import type { Alert, ThreatAssessment, ThreatLevel, SensorFamily } from '@/types
 
 const MAX_ALERTS = 200
 
+export type TimeRange = '1h' | '6h' | '24h' | 'ALL'
+
 interface AlertFilter {
   threatLevel: ThreatLevel | 'ALL'
   sensorFamily: SensorFamily | 'ALL'
   acknowledged: 'ALL' | 'UNACKED' | 'ACKED'
+  timeRange: TimeRange
 }
 
 interface AlertState {
@@ -15,9 +18,17 @@ interface AlertState {
   filter: AlertFilter
   addAlert: (alert: Alert) => void
   acknowledgeAlert: (id: string, comment: string) => void
+  acknowledgeAll: (comment: string) => void
   setThreatAssessment: (ta: ThreatAssessment) => void
   setFilter: (filter: Partial<AlertFilter>) => void
   filteredAlerts: () => Alert[]
+}
+
+const TIME_RANGE_MS: Record<TimeRange, number> = {
+  '1h':  60 * 60 * 1000,
+  '6h':  6 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
+  'ALL': Infinity,
 }
 
 export const useAlertStore = create<AlertState>()((set, get) => ({
@@ -27,6 +38,7 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
     threatLevel: 'ALL',
     sensorFamily: 'ALL',
     acknowledged: 'UNACKED',
+    timeRange: 'ALL',
   },
 
   addAlert: (alert: Alert) => {
@@ -44,6 +56,17 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
     }))
   },
 
+  acknowledgeAll: (comment: string) => {
+    const visible = get().filteredAlerts()
+    const ids = new Set(visible.filter((a) => !a.acknowledged).map((a) => a.id))
+    if (ids.size === 0) return
+    set((state) => ({
+      alerts: state.alerts.map((a) =>
+        ids.has(a.id) ? { ...a, acknowledged: true, annotation: comment } : a
+      ),
+    }))
+  },
+
   setThreatAssessment: (ta: ThreatAssessment) => {
     set({ threatAssessment: ta })
   },
@@ -54,6 +77,9 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
 
   filteredAlerts: () => {
     const { alerts, filter } = get()
+    const cutoff = filter.timeRange && filter.timeRange !== 'ALL'
+      ? Date.now() - TIME_RANGE_MS[filter.timeRange]
+      : -Infinity
     return alerts.filter((alert) => {
       if (filter.threatLevel !== 'ALL' && alert.threat_level !== filter.threatLevel) {
         return false
@@ -65,6 +91,9 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
         return false
       }
       if (filter.acknowledged === 'ACKED' && !alert.acknowledged) {
+        return false
+      }
+      if (new Date(alert.timestamp).getTime() < cutoff) {
         return false
       }
       return true

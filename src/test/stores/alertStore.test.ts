@@ -191,5 +191,69 @@ describe('useAlertStore', () => {
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('a1')
     })
+
+    it('timeRange ALL returns all alerts regardless of age', () => {
+      const oldTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'old', timestamp: oldTimestamp }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'new' }))
+        useAlertStore.getState().setFilter({ threatLevel: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' })
+      })
+      expect(useAlertStore.getState().filteredAlerts()).toHaveLength(2)
+    })
+
+    it('timeRange 1h excludes alerts older than 1 hour', () => {
+      const oldTimestamp = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      const recentTimestamp = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'old', timestamp: oldTimestamp }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'recent', timestamp: recentTimestamp }))
+        useAlertStore.getState().setFilter({ threatLevel: 'ALL', acknowledged: 'ALL', timeRange: '1h' })
+      })
+      const result = useAlertStore.getState().filteredAlerts()
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('recent')
+    })
+  })
+
+  describe('acknowledgeAll', () => {
+    it('acknowledges all unacked visible alerts in one call', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a1', acknowledged: false }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a2', acknowledged: false }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a3', acknowledged: false }))
+        useAlertStore.getState().setFilter({ threatLevel: 'ALL', acknowledged: 'ALL' })
+        useAlertStore.getState().acknowledgeAll('Batch ack')
+      })
+      const alerts = useAlertStore.getState().alerts
+      expect(alerts.every((a) => a.acknowledged)).toBe(true)
+      expect(alerts.every((a) => a.annotation === 'Batch ack')).toBe(true)
+    })
+
+    it('only acknowledges visible (filtered) alerts, not hidden ones', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'high', threat_level: 'HIGH', acknowledged: false }))
+        useAlertStore.getState().addAlert(mockAlert({ id: 'low', threat_level: 'LOW', acknowledged: false }))
+        // Filter to HIGH only
+        useAlertStore.getState().setFilter({ threatLevel: 'HIGH', acknowledged: 'ALL' })
+        useAlertStore.getState().acknowledgeAll('')
+      })
+      const alerts = useAlertStore.getState().alerts
+      const high = alerts.find((a) => a.id === 'high')
+      const low = alerts.find((a) => a.id === 'low')
+      expect(high?.acknowledged).toBe(true)
+      expect(low?.acknowledged).toBe(false)
+    })
+
+    it('does nothing when all visible alerts are already acknowledged', () => {
+      act(() => {
+        useAlertStore.getState().addAlert(mockAlert({ id: 'a1', acknowledged: true }))
+        useAlertStore.getState().setFilter({ threatLevel: 'ALL', acknowledged: 'ALL' })
+        useAlertStore.getState().acknowledgeAll('should not change')
+      })
+      const alert = useAlertStore.getState().alerts.find((a) => a.id === 'a1')
+      // annotation was already set by constructor; acknowledgeAll skips already-acked alerts
+      expect(alert?.acknowledged).toBe(true)
+    })
   })
 })

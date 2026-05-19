@@ -4,6 +4,7 @@ import { useSystemStore } from '@/store/systemStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
+import { logout } from '@/api/auth'
 
 const SITES = ['BOP-ALPHA-01', 'BOP-BETA-01']
 
@@ -21,6 +22,14 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user = useSystemStore((s) => s.user)
+  const setUser = useSystemStore((s) => s.setUser)
+
+  const handleLogout = async () => {
+    await logout()
+    setUser(null)
+    window.location.href = window.location.origin + import.meta.env.BASE_URL + 'login'
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -118,8 +127,18 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user ? (user.displayName ?? user.email) : 'Operator'}
         </span>
+        {user && (
+          <button
+            onClick={handleLogout}
+            className="ml-1 text-[10px] text-text-secondary hover:text-text-primary transition-colors"
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            ⏻
+          </button>
+        )}
       </div>
     </header>
   )

@@ -1,11 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/pages/LoginPage'
+import { getMe } from '@/api/auth'
+import { getAccessToken } from '@/api/client'
 
-export function App() {
+function Dashboard() {
   const theme = useSystemStore((s) => s.theme)
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
@@ -48,5 +52,53 @@ export function App() {
         <PanelGrid />
       </div>
     </div>
+  )
+}
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const user = useSystemStore((s) => s.user)
+  const setUser = useSystemStore((s) => s.setUser)
+  const [checked, setChecked] = useState(false)
+
+  useEffect(() => {
+    if (!getAccessToken()) {
+      setChecked(true)
+      return
+    }
+    getMe()
+      .then((me) => {
+        setUser(me)
+        setChecked(true)
+      })
+      .catch(() => {
+        setChecked(true)
+      })
+  }, [setUser])
+
+  if (!checked) {
+    // Brief check — show nothing while validating stored token
+    return null
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <AuthGuard>
+            <Dashboard />
+          </AuthGuard>
+        }
+      />
+    </Routes>
   )
 }

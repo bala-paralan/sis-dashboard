@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { SystemHealth, ScenarioType } from '@/types/sensors'
+import type { MeResponse } from '@/api/auth'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
 
@@ -13,6 +14,7 @@ interface SystemState {
   mobileSidebarOpen: boolean
   reconnectFn: (() => void) | null
   sendMessageFn: ((msg: object) => void) | null
+  user: MeResponse | null
   setHealth: (h: SystemHealth) => void
   setTheme: (t: 'dark' | 'light') => void
   toggleTheme: () => void
@@ -26,6 +28,7 @@ interface SystemState {
   reconnect: () => void
   setSendMessageFn: (fn: (msg: object) => void) => void
   sendMessage: (msg: object) => void
+  setUser: (u: MeResponse | null) => void
 }
 
 function applyTheme(theme: 'dark' | 'light') {
@@ -45,6 +48,7 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
   mobileSidebarOpen: false,
   reconnectFn: null,
   sendMessageFn: null,
+  user: null,
 
   setHealth: (h: SystemHealth) => {
     set({ health: h })
@@ -102,5 +106,9 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
 
   sendMessage: (msg: object) => {
     get().sendMessageFn?.(msg)
+  },
+
+  setUser: (u: MeResponse | null) => {
+    set({ user: u })
   },
 }))

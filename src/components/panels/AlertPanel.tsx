@@ -7,12 +7,14 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
+import type { TimeRange } from '@/store/alertStore'
 
 // ── Threat level filter chips ─────────────────────────────────
 const THREAT_LEVELS: (ThreatLevel | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 const FAMILIES: (SensorFamily | 'ALL')[] = [
   'ALL', 'Seismic', 'Acoustic', 'Optical', 'Radar', 'Magnetic', 'Chemical',
 ]
+const TIME_RANGES: TimeRange[] = ['1h', '6h', '24h', 'ALL']
 
 const LEVEL_COLORS: Record<string, string> = {
   CRITICAL: 'var(--alert-critical)',
@@ -85,6 +87,7 @@ export function AlertPanel() {
   const setFilter = useAlertStore((s) => s.setFilter)
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
+  const acknowledgeAll = useAlertStore((s) => s.acknowledgeAll)
 
   const prevCountRef = useRef(0)
 
@@ -185,15 +188,39 @@ export function AlertPanel() {
             setFilter({ acknowledged: e.target.value as 'ALL' | 'UNACKED' | 'ACKED' })
           }
           className="text-[11px] px-1.5 h-7"
+          aria-label="Acknowledgment filter"
         >
           <option value="ALL">All</option>
           <option value="UNACKED">Unacknowledged</option>
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
+        {/* Time range filter */}
+        <select
+          value={filter.timeRange ?? 'ALL'}
+          onChange={(e) => setFilter({ timeRange: e.target.value as TimeRange })}
+          className="text-[11px] px-1.5 h-7"
+          aria-label="Time range filter"
+        >
+          {TIME_RANGES.map((r) => (
+            <option key={r} value={r}>{r === 'ALL' ? 'All time' : `Last ${r}`}</option>
+          ))}
+        </select>
+
+        <span className="text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        {/* Ack All button — only show when there are unacked visible alerts */}
+        {displayed.some((a) => !a.acknowledged) && (
+          <button
+            onClick={() => acknowledgeAll('')}
+            className="btn btn-ghost text-[10px] py-[2px] px-2 rounded ml-auto"
+            title="Acknowledge all visible alerts"
+          >
+            Ack All
+          </button>
+        )}
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
