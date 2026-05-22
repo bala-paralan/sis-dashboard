@@ -4,8 +4,8 @@ import { CameraStatusBadge } from './CameraStatusBadge';
 interface Props {
   camera:    Camera;
   onSelect:  (id: string) => void;
-  onEdit:    (cam: Camera) => void;
-  onDelete:  (id: string) => void;
+  onEdit?:   (cam: Camera) => void;
+  onDelete?: (id: string) => void;
   onTest:    (id: string) => void;
   testResult?: { reachable: boolean; latency_ms: number | null; message: string };
 }
@@ -69,18 +69,22 @@ export const CameraCard = ({ camera, onSelect, onEdit, onDelete, onTest, testRes
       >
         Test
       </button>
-      <button
-        onClick={() => onEdit(camera)}
-        className="rounded border border-white/20 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
-      >
-        Edit
-      </button>
-      <button
-        onClick={() => { if (confirm(`Delete camera "${camera.name}"?`)) onDelete(camera.id); }}
-        className="rounded border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30"
-      >
-        Delete
-      </button>
+      {onEdit && (
+        <button
+          onClick={() => onEdit(camera)}
+          className="rounded border border-white/20 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
+        >
+          Edit
+        </button>
+      )}
+      {onDelete && (
+        <button
+          onClick={() => { if (confirm(`Delete camera "${camera.name}"?`)) onDelete(camera.id); }}
+          className="rounded border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30"
+        >
+          Delete
+        </button>
+      )}
     </div>
   </div>
 );

@@ -8,6 +8,7 @@ import type { Camera, CreateCameraInput, CameraStatus } from '@/api/cameras';
 import { CameraCard } from './CameraCard';
 import { CameraFormModal } from './CameraFormModal';
 import { CameraPlayer } from './CameraPlayer';
+import { useHasRole } from '@/hooks/useRole';
 
 const STATUSES: Array<CameraStatus | ''> = ['', 'ONLINE', 'OFFLINE', 'DEGRADED', 'ERROR', 'MAINTENANCE'];
 
@@ -23,6 +24,7 @@ export const CameraGrid = () => {
 
   const [showAdd,  setShowAdd]  = useState(false);
   const [editing,  setEditing]  = useState<Camera | null>(null);
+  const canManage = useHasRole('OPERATOR');
 
   useEffect(() => { void loadCameras(); }, []);
 
@@ -72,12 +74,14 @@ export const CameraGrid = () => {
           >
             ↺ Refresh
           </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
-          >
-            + Add Camera
-          </button>
+          {canManage && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + Add Camera
+            </button>
+          )}
         </div>
       </div>
 
@@ -110,8 +114,8 @@ export const CameraGrid = () => {
             camera={cam}
             testResult={testResults[cam.id]}
             onSelect={selectCamera}
-            onEdit={setEditing}
-            onDelete={(id) => void removeCamera(id)}
+            onEdit={canManage ? setEditing : undefined}
+            onDelete={canManage ? (id) => void removeCamera(id) : undefined}
             onTest={(id) => void testCamera(id)}
           />
         ))}

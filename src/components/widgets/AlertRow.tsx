@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Alert } from '@/types/sensors'
 import { formatRelativeTime, getThreatLevelColor } from '@/utils/formatters'
+import { useHasRole } from '@/hooks/useRole'
 
 interface AlertRowProps {
   alert: Alert
@@ -18,6 +19,7 @@ const LEVEL_INITIAL: Record<string, string> = {
 export function AlertRow({ alert, onAck }: AlertRowProps) {
   const [ackComment, setAckComment] = useState('')
   const [showAckInput, setShowAckInput] = useState(false)
+  const canAck = useHasRole('OPERATOR')
 
   const levelColor = getThreatLevelColor(alert.threat_level)
   const initial = LEVEL_INITIAL[alert.threat_level] ?? '?'
@@ -84,12 +86,14 @@ export function AlertRow({ alert, onAck }: AlertRowProps) {
             {formatRelativeTime(alert.timestamp)}
           </span>
           {!alert.acknowledged ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleAckClick() }}
-              className="btn btn-ghost text-[10px] py-[2px] px-2 rounded"
-            >
-              {showAckInput ? 'Confirm' : 'ACK'}
-            </button>
+            canAck ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAckClick() }}
+                className="btn btn-ghost text-[10px] py-[2px] px-2 rounded"
+              >
+                {showAckInput ? 'Confirm' : 'ACK'}
+              </button>
+            ) : null
           ) : (
             <span className="text-[10px] text-sensor-acoustic font-semibold">ACKED</span>
           )}

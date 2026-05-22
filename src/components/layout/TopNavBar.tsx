@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
+import { logout } from '@/api/auth'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
 
 const SITES = ['BOP-ALPHA-01', 'BOP-BETA-01']
+
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: 'var(--alert-critical)',
+  OPERATOR: 'var(--sensor-acoustic)',
+  VIEWER: 'var(--text-muted)',
+}
 
 function formatUTCTime(d: Date): string {
   const hh = String(d.getUTCHours()).padStart(2, '0')
@@ -17,10 +27,17 @@ function formatUTCTime(d: Date): string {
 export function TopNavBar() {
   const [time, setTime] = useState(() => formatUTCTime(new Date()))
   const [site, setSite] = useState(SITES[0])
+  const navigate = useNavigate()
+
   const alerts = useAlertStore((s) => s.alerts)
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+
+  const user = useAuthStore((s) => s.user)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+  const unreadNotifications = useNotificationStore((s) => s.unreadCount())
+  const toggleCenter = useNotificationStore((s) => s.toggleCenter)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -28,6 +45,16 @@ export function TopNavBar() {
     }, 1000)
     return () => clearInterval(id)
   }, [])
+
+  const handleLogout = async () => {
+    await logout()
+    clearAuth()
+    navigate('/login', { replace: true })
+  }
+
+  const displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'Operator'
+  const role = user?.role ?? 'OPERATOR'
+  const roleColor = ROLE_COLORS[role] ?? 'var(--sensor-acoustic)'
 
   return (
     <header
@@ -108,18 +135,45 @@ export function TopNavBar() {
         </div>
       )}
 
+      {/* Notification bell */}
+      <button
+        onClick={toggleCenter}
+        className="relative w-[30px] h-[30px] flex items-center justify-center rounded-[6px] border border-border-color bg-bg-tertiary transition-colors hover:border-accent-blue shrink-0"
+        aria-label="Open notification center"
+        title="Notifications"
+      >
+        <span className="text-[14px]">🔔</span>
+        {unreadNotifications > 0 && (
+          <span
+            className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center"
+            style={{ background: 'var(--alert-critical)', color: '#fff' }}
+          >
+            {unreadNotifications > 9 ? '9+' : unreadNotifications}
+          </span>
+        )}
+      </button>
+
       {/* Theme toggle */}
       <ThemeToggle />
 
-      {/* User badge */}
+      {/* User badge + logout */}
       <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
         <span
-          className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
-          style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
+          className="w-[7px] h-[7px] rounded-full shrink-0"
+          style={{ background: roleColor, boxShadow: `0 0 5px ${roleColor}` }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {displayName}
         </span>
+        <span className="text-[9px] text-text-muted font-mono uppercase">{role}</span>
+        <button
+          onClick={handleLogout}
+          className="ml-1 text-[10px] text-text-muted hover:text-alert-critical transition-colors cursor-pointer"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          ⏻
+        </button>
       </div>
     </header>
   )

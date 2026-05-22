@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
+import { useAuthStore } from '@/store/authStore'
+import { exportIncidentReport } from '@/utils/exportUtils'
 
 interface NodeStatus {
   id: string
@@ -96,6 +99,9 @@ export function CommandPanel() {
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const alerts = useAlertStore((s) => s.alerts)
+  const user = useAuthStore((s) => s.user)
+  const operatorName = user?.displayName ?? user?.email ?? 'Operator'
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
@@ -222,8 +228,11 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
-                ⬇ Export PDF → BHQN
+              <button
+                onClick={() => exportIncidentReport(alerts, operatorName)}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
+                ⬇ Export Report (.txt)
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot

@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportAlertsCsv } from '@/utils/exportUtils'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -126,7 +127,7 @@ export function AlertPanel() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      {/* Header — just the sparkline + critical badge */}
+      {/* Header — sparkline + critical badge + export */}
       <div className="py-1 px-3 border-b border-border-color text-[13px] font-semibold text-text-secondary bg-panel-header-bg flex items-center justify-between shrink-0">
         <span className="flex items-center gap-2">
           {critCount > 0 && (
@@ -138,7 +139,16 @@ export function AlertPanel() {
             </span>
           )}
         </span>
-        <AlertSparkline data={sparkData} />
+        <span className="flex items-center gap-2">
+          <AlertSparkline data={sparkData} />
+          <button
+            onClick={() => exportAlertsCsv(filteredAlerts())}
+            className="text-[10px] font-semibold px-2 py-[3px] rounded border border-border-color bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-accent-blue transition-colors cursor-pointer"
+            title="Export filtered alerts as CSV"
+          >
+            ⬇ CSV
+          </button>
+        </span>
       </div>
 
       {/* Filter bar */}

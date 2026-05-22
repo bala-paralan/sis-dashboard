@@ -1,7 +1,17 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useSystemStore } from '@/store/systemStore'
 import { useViewStore } from '@/store/viewStore'
+import { useNotificationStore } from '@/store/notificationStore'
+import { useHasRole } from '@/hooks/useRole'
+import {
+  loadPresets,
+  addPreset,
+  deletePreset,
+  exportPresetJson,
+  importPresetJson,
+  type DashboardPreset,
+} from '@/utils/presetUtils'
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Video & Imaging':            '📹',
@@ -23,7 +33,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Interoperability':           '🔗',
 }
 
-type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds'
+type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds' | 'presets'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -53,6 +63,64 @@ export function SettingsPanel() {
 
   const theme = useSystemStore((s) => s.theme)
   const toggleTheme = useSystemStore((s) => s.toggleTheme)
+  const soundEnabled = useNotificationStore((s) => s.soundEnabled)
+  const toggleSound = useNotificationStore((s) => s.toggleSound)
+  const isAdmin = useHasRole('ADMIN')
+
+  const [presets, setPresets] = useState<DashboardPreset[]>(() => loadPresets())
+  const [presetName, setPresetName] = useState('')
+  const importRef = useRef<HTMLInputElement>(null)
+
+  const handleSavePreset = () => {
+    const name = presetName.trim()
+    if (!name) return
+    const widgets = useSettingsStore.getState().widgets
+    const panels = useSettingsStore.getState().panels
+    const defaultExpandedPanel = useSettingsStore.getState().defaultExpandedPanel
+    const updated = addPreset(name, widgets, panels, defaultExpandedPanel)
+    setPresets(updated)
+    setPresetName('')
+  }
+
+  const handleLoadPreset = (preset: DashboardPreset) => {
+    const { widgets, panels, defaultExpandedPanel } = useSettingsStore.getState()
+    const newWidgets = widgets.map((w) => ({
+      ...w,
+      ...(preset.widgets[w.id] ?? {}),
+    }))
+    useSettingsStore.setState({ widgets: newWidgets, panels: { ...panels, ...preset.panels }, defaultExpandedPanel: preset.defaultExpandedPanel })
+    try {
+      localStorage.setItem('sis-settings', JSON.stringify({
+        widgets: preset.widgets,
+        panels: preset.panels,
+        defaultExpandedPanel: preset.defaultExpandedPanel,
+      }))
+    } catch { /* noop */ }
+  }
+
+  const handleDeletePreset = (name: string) => {
+    setPresets(deletePreset(name))
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const preset = await importPresetJson(file)
+      const updated = addPreset(preset.name, [], preset.panels, preset.defaultExpandedPanel)
+      // Merge widgets from the file directly
+      const existing = loadPresets().find((p) => p.name === preset.name)
+      if (existing) {
+        existing.widgets = preset.widgets
+        const { addPreset: _a, ...rest } = { addPreset: null } // just use loadPresets
+        void rest
+      }
+      setPresets(updated)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Import failed')
+    }
+    if (importRef.current) importRef.current.value = ''
+  }
 
   const defaultExpandedPanel    = useSettingsStore((s) => s.defaultExpandedPanel)
   const setDefaultExpandedPanel = useSettingsStore((s) => s.setDefaultExpandedPanel)
@@ -66,6 +134,7 @@ export function SettingsPanel() {
     { id: 'display',    label: 'Display',    icon: '🎨' },
     { id: 'layout',     label: 'Layout',     icon: '⤢' },
     { id: 'thresholds', label: 'Thresholds', icon: '⚡' },
+    { id: 'presets',    label: 'Presets',    icon: '💾' },
   ]
 
   const PANEL_LABELS: Record<string, { label: string; icon: string; isNew?: boolean }> = {
@@ -235,6 +304,23 @@ export function SettingsPanel() {
                   </div>
                 </div>
                 <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
+              </div>
+            </div>
+
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-4">
+              <div className="text-[12px] font-bold mb-3 text-text-primary">
+                Notifications
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[12px]">
+                    {soundEnabled ? '🔔 Alert sounds on' : '🔕 Alert sounds off'}
+                  </div>
+                  <div className="text-[11px] text-text-secondary mt-[2px]">
+                    Play a tone when new CRITICAL or HIGH alerts arrive
+                  </div>
+                </div>
+                <Toggle checked={soundEnabled} onChange={toggleSound} />
               </div>
             </div>
 
@@ -437,6 +523,114 @@ export function SettingsPanel() {
           </div>
         )}
 
+        {/* ── PRESETS TAB ── */}
+        {activeTab === 'presets' && (
+          <div className="flex flex-col gap-4">
+            <div className="text-[11px] text-text-secondary leading-relaxed">
+              Save the current panel and widget configuration as a named preset. Up to 5 presets are stored in localStorage.
+            </div>
+
+            {/* Save preset */}
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-4">
+              <div className="text-[12px] font-bold mb-3 text-text-primary">Save Current Layout</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Preset name…"
+                  maxLength={32}
+                  className="flex-1 text-[12px] px-2 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-primary outline-none"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset() }}
+                />
+                <button
+                  onClick={handleSavePreset}
+                  disabled={!presetName.trim()}
+                  className="py-[5px] px-3 bg-accent-blue border-none rounded text-white cursor-pointer text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+
+            {/* Import */}
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-4">
+              <div className="text-[12px] font-bold mb-3 text-text-primary">Import / Export</div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => importRef.current?.click()}
+                  className="py-[5px] px-3 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
+                >
+                  ⬆ Import JSON
+                </button>
+                {presets[0] && (
+                  <button
+                    onClick={() => exportPresetJson(presets[0])}
+                    className="py-[5px] px-3 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
+                  >
+                    ⬇ Export latest
+                  </button>
+                )}
+                <input
+                  ref={importRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleImport}
+                />
+              </div>
+            </div>
+
+            {/* Preset list */}
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-4">
+              <div className="text-[12px] font-bold mb-3 text-text-primary">
+                Saved Presets ({presets.length}/5)
+              </div>
+              {presets.length === 0 ? (
+                <p className="text-[11px] text-text-muted">No presets saved yet.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {presets.map((preset) => (
+                    <div
+                      key={preset.name}
+                      className="flex items-center justify-between gap-2 py-2 px-3 bg-bg-tertiary rounded border border-border-color"
+                    >
+                      <div>
+                        <p className="text-[12px] font-semibold text-text-primary">{preset.name}</p>
+                        <p className="text-[10px] text-text-muted">
+                          {new Date(preset.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handleLoadPreset(preset)}
+                          className="py-[3px] px-2 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-semibold"
+                        >
+                          Load
+                        </button>
+                        <button
+                          onClick={() => exportPresetJson(preset)}
+                          className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+                          title="Export as JSON"
+                        >
+                          ⬇
+                        </button>
+                        <button
+                          onClick={() => handleDeletePreset(preset.name)}
+                          className="py-[3px] px-2 bg-transparent border border-[rgba(239,68,68,0.3)] rounded text-alert-critical cursor-pointer text-[10px]"
+                          title="Delete preset"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* Footer actions */}
@@ -444,12 +638,14 @@ export function SettingsPanel() {
         <span className="text-[10px] text-text-secondary">
           Settings saved automatically to localStorage
         </span>
-        <button
-          onClick={resetToDefaults}
-          className="py-[5px] px-3 bg-transparent border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
-        >
-          Reset to defaults
-        </button>
+        {isAdmin && (
+          <button
+            onClick={resetToDefaults}
+            className="py-[5px] px-3 bg-transparent border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
+          >
+            Reset to defaults
+          </button>
+        )}
       </div>
     </div>
   )
