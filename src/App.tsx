@@ -1,11 +1,14 @@
 import { useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/pages/LoginPage'
+import { getAccessToken } from '@/api/client'
 
-export function App() {
+function DashboardLayout() {
   const theme = useSystemStore((s) => s.theme)
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
@@ -48,5 +51,29 @@ export function App() {
         <PanelGrid />
       </div>
     </div>
+  )
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const token = getAccessToken()
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <DashboardLayout />
+          </RequireAuth>
+        }
+      />
+    </Routes>
   )
 }
