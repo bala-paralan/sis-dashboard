@@ -1,6 +1,6 @@
 # TASK-006: Add Tests for Camera Management Components
 
-**Status:** TODO  
+**Status:** DONE  
 **Priority:** Medium
 
 ## Description

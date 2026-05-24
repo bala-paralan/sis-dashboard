@@ -1,6 +1,6 @@
 # TASK-010: Add Tests for DeviceConfigPage
 
-**Status:** TODO  
+**Status:** DONE  
 **Priority:** Low
 
 ## Description
