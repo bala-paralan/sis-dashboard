@@ -167,8 +167,7 @@ export interface VideoFrame {
 export interface AlertFilter {
   threatLevel: ThreatLevel | 'ALL';
   sensorFamily: SensorFamily | 'ALL';
-  timeRange: '1h' | '6h' | '24h' | 'ALL';
-  showAcknowledged: boolean;
+  acknowledged: 'ALL' | 'UNACKED' | 'ACKED';
 }
 
 export type SensorFamilyTab = SensorFamily;

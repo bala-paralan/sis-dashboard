@@ -26,18 +26,9 @@ export function App() {
   }, [theme])
 
   return (
-    <div
-      className="app-shell"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        background: 'var(--bg-primary)',
-        color: 'var(--text-primary)',
-      }}
-    >
+    <div className="app-shell flex flex-col h-screen bg-bg-primary text-text-primary">
       <TopNavBar />
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div className="flex flex-1 overflow-hidden relative">
         <LeftSidebar />
         {/* Mobile sidebar backdrop */}
         <div
