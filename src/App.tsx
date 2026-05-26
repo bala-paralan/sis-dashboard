@@ -1,11 +1,20 @@
 import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/pages/LoginPage'
+import { getAccessToken } from '@/api/client'
 
-export function App() {
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const token = getAccessToken()
+  if (!token) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+function Dashboard() {
   const theme = useSystemStore((s) => s.theme)
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
@@ -48,5 +57,23 @@ export function App() {
         <PanelGrid />
       </div>
     </div>
+  )
+}
+
+export function App() {
+  return (
+    <BrowserRouter basename="/sis-dashboard">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <Dashboard />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   )
 }

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
+import { logout } from '@/api/auth'
 
 const SITES = ['BOP-ALPHA-01', 'BOP-BETA-01']
 
@@ -21,6 +23,12 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -121,6 +129,16 @@ export function TopNavBar() {
           Operator
         </span>
       </div>
+
+      {/* Logout */}
+      <button
+        onClick={() => { void handleLogout() }}
+        aria-label="Logout"
+        className="w-[30px] h-[30px] rounded-[6px] border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer flex items-center justify-center text-[13px] shrink-0 hover:text-alert-critical hover:border-alert-critical transition-colors"
+        title="Sign out"
+      >
+        ⏻
+      </button>
     </header>
   )
 }
