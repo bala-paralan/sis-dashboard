@@ -276,4 +276,71 @@ describe('useWebSocket', () => {
       )
     })
   })
+
+  describe('outbound message queue', () => {
+    it('queues messages when the socket is not OPEN', async () => {
+      const { result } = renderHook(() => useWebSocket())
+      await act(async () => { vi.runAllTimers() })
+      const ws = TrackingMockWS.instances[0]
+
+      // Simulate disconnect — set readyState to CLOSED
+      ws.readyState = TrackingMockWS.CLOSED
+
+      act(() => {
+        result.current.sendMessage({ type: 'PTZ_CONTROL', payload: { cmd: 'STOP' } })
+      })
+      // Should NOT have been sent immediately
+      const sendCalls = ws.send.mock.calls.map((c: string[]) => c[0])
+      expect(sendCalls).not.toContain(JSON.stringify({ type: 'PTZ_CONTROL', payload: { cmd: 'STOP' } }))
+    })
+
+    it('drains queued messages on reconnect (after onopen fires)', async () => {
+      const { result } = renderHook(() => useWebSocket())
+      await act(async () => { vi.runAllTimers() })
+      const ws1 = TrackingMockWS.instances[0]
+
+      // Disconnect, queue a message
+      ws1.readyState = TrackingMockWS.CLOSED
+      act(() => {
+        result.current.sendMessage({ type: 'PTZ_CONTROL', payload: { cmd: 'STOP' } })
+      })
+
+      // Simulate a reconnect (close triggers scheduleReconnect → new WS)
+      act(() => { ws1.onclose!(new CloseEvent('close')) })
+      await act(async () => { vi.runAllTimers() }) // run reconnect timer + new onopen timer
+
+      const ws2 = TrackingMockWS.instances[TrackingMockWS.instances.length - 1]
+      const sentPayloads = ws2.send.mock.calls.map((c: string[]) => c[0])
+      expect(sentPayloads).toContain(JSON.stringify({ type: 'PTZ_CONTROL', payload: { cmd: 'STOP' } }))
+    })
+
+    it('caps the queue at 50 messages, dropping the oldest', async () => {
+      const { result } = renderHook(() => useWebSocket())
+      await act(async () => { vi.runAllTimers() })
+      const ws = TrackingMockWS.instances[0]
+
+      ws.readyState = TrackingMockWS.CLOSED
+
+      // Queue 55 messages
+      act(() => {
+        for (let i = 0; i < 55; i++) {
+          result.current.sendMessage({ type: 'PTZ_CONTROL', payload: { seq: i } })
+        }
+      })
+
+      // Reconnect — drain
+      act(() => { ws.onclose!(new CloseEvent('close')) })
+      await act(async () => { vi.runAllTimers() })
+
+      const ws2 = TrackingMockWS.instances[TrackingMockWS.instances.length - 1]
+      // Only 50 messages should have been sent (after SUBSCRIBE)
+      const queuedSends = ws2.send.mock.calls
+        .map((c: string[]) => JSON.parse(c[0]) as { type: string; payload: { seq?: number } })
+        .filter((m) => m.type === 'PTZ_CONTROL')
+      expect(queuedSends).toHaveLength(50)
+      // Oldest (seq 0-4) should be dropped; newest (seq 5-54) should remain
+      expect(queuedSends[0].payload.seq).toBe(5)
+      expect(queuedSends[49].payload.seq).toBe(54)
+    })
+  })
 })

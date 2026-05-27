@@ -7,11 +7,14 @@ import type { Alert, SensorPayload, Track, ThreatAssessment, SystemHealth, Scena
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'wss://sis-sse.onrender.com'
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 
+const MAX_QUEUE = 50
+
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
+  const pendingQueueRef = useRef<string[]>([])
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return
@@ -40,6 +43,11 @@ export function useWebSocket() {
       useSystemStore.getState().setConnectionStatus('connected')
       // Subscribe to all data streams
       ws.send(JSON.stringify({ type: 'SUBSCRIBE', payload: { streams: ['ALL'] } }))
+      // Drain queued messages that accumulated while disconnected
+      const queue = pendingQueueRef.current.splice(0)
+      for (const msg of queue) {
+        ws.send(msg)
+      }
     }
 
     ws.onmessage = (event: MessageEvent) => {
@@ -164,6 +172,13 @@ export function useWebSocket() {
   const sendMessage = useCallback((msg: object) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg))
+    } else {
+      // Queue message to be sent on next successful connection
+      const queue = pendingQueueRef.current
+      if (queue.length >= MAX_QUEUE) {
+        queue.shift() // drop oldest to enforce cap
+      }
+      queue.push(JSON.stringify(msg))
     }
   }, [])
 

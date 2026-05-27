@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { PanelShell } from '@/components/layout/PanelShell'
 import { useViewStore } from '@/store/viewStore'
+
+// Component that throws on render — used to test the error boundary
+function ThrowingChild({ shouldThrow = true }: { shouldThrow?: boolean }) {
+  if (shouldThrow) throw new Error('Test panel crash')
+  return <div data-testid="safe-child">Safe content</div>
+}
 
 describe('PanelShell', () => {
   beforeEach(() => {
@@ -118,5 +124,67 @@ describe('PanelShell', () => {
     )
     expect(screen.getByTestId('extra-btn')).toBeInTheDocument()
     expect(screen.getByText('Extra')).toBeInTheDocument()
+  })
+})
+
+describe('PanelErrorBoundary (via PanelShell)', () => {
+  beforeEach(() => {
+    useViewStore.setState({ panelViews: {}, expandedPanel: null })
+    // Suppress React's expected error output from error boundary tests
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders children normally when no error is thrown', () => {
+    render(
+      <PanelShell panelId="test" title="Panel">
+        <ThrowingChild shouldThrow={false} />
+      </PanelShell>
+    )
+    expect(screen.getByTestId('safe-child')).toBeInTheDocument()
+  })
+
+  it('catches a child render error and shows the error message', () => {
+    render(
+      <PanelShell panelId="err" title="Crash Panel">
+        <ThrowingChild shouldThrow />
+      </PanelShell>
+    )
+    expect(screen.getByText(/crash panel error/i)).toBeInTheDocument()
+    expect(screen.getByText('Test panel crash')).toBeInTheDocument()
+  })
+
+  it('shows a Retry button after a panel crash', () => {
+    render(
+      <PanelShell panelId="err" title="Crash Panel">
+        <ThrowingChild shouldThrow />
+      </PanelShell>
+    )
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+  })
+
+  it('Retry button resets the boundary so children can re-render', () => {
+    // Use a closure-controlled flag so the child stops throwing before Retry fires
+    let shouldThrow = true
+    function ControlledChild() {
+      if (shouldThrow) throw new Error('Test panel crash')
+      return <div data-testid="safe-child">Safe content</div>
+    }
+
+    render(
+      <PanelShell panelId="err" title="Crash Panel">
+        <ControlledChild />
+      </PanelShell>
+    )
+    expect(screen.getByText('Test panel crash')).toBeInTheDocument()
+
+    // Allow child to succeed on the next render, then click Retry
+    shouldThrow = false
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(screen.getByTestId('safe-child')).toBeInTheDocument()
   })
 })

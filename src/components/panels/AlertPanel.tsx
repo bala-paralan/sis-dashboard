@@ -6,7 +6,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
-import type { ThreatLevel, SensorFamily } from '@/types/sensors'
+import { exportAlerts } from '@/utils/exporters'
+import type { Alert, ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
 const THREAT_LEVELS: (ThreatLevel | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
@@ -75,6 +76,61 @@ function AlertSparkline({ data }: SparklineProps) {
         stroke="none"
       />
     </svg>
+  )
+}
+
+// ── Export dropdown ───────────────────────────────────────────
+function ExportDropdown({ alerts }: { alerts: Alert[] }) {
+  const [open, setOpen] = useState(false)
+
+  function handleExport(format: 'csv' | 'json') {
+    exportAlerts(alerts, format)
+    setOpen(false)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Export alerts"
+        className="text-[10px] font-bold px-[10px] h-7 rounded-full cursor-pointer tracking-[0.05em] transition-all duration-150 inline-flex items-center gap-1"
+        style={{
+          border: '1px solid var(--border-color)',
+          background: 'transparent',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        Export ▾
+      </button>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '110%',
+            right: 0,
+            zIndex: 99,
+            background: 'var(--bg-tertiary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 6,
+            minWidth: 120,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          }}
+        >
+          <button
+            onClick={() => handleExport('csv')}
+            className="block w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover cursor-pointer"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            className="block w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover cursor-pointer"
+          >
+            Export JSON
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -194,6 +250,9 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        {/* Export dropdown */}
+        <ExportDropdown alerts={displayed} />
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
