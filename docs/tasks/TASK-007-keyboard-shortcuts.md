@@ -1,6 +1,6 @@
 # TASK-007: Keyboard Shortcuts for Panel Navigation
 
-**Status:** TODO  
+**Status:** DONE  
 **Priority:** Low  
 **Estimated effort:** 2 hours
 
@@ -18,8 +18,8 @@ shortcuts without touching the mouse.
 | `?` (Shift+/) | Show keyboard shortcut help modal |
 
 ## Acceptance Criteria
-- [ ] `useKeyboardShortcuts` hook in `src/hooks/` wires up all shortcuts
-- [ ] Hook is registered once in `App.tsx`
-- [ ] Help modal (ShortcutsHelpModal) lists all shortcuts
-- [ ] Shortcuts do not fire when focus is inside a text input / textarea
-- [ ] Tests added for the hook (mocked KeyboardEvent)
+- [x] `useKeyboardShortcuts` hook in `src/hooks/` wires up all shortcuts
+- [x] Hook is registered once in `App.tsx`
+- [x] Help modal (ShortcutsHelpModal) lists all shortcuts
+- [x] Shortcuts do not fire when focus is inside a text input / textarea
+- [x] Tests added for the hook (mocked KeyboardEvent)
