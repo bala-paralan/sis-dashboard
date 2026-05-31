@@ -85,6 +85,21 @@ const localStorageMock = (() => {
 })()
 Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 
+// ── Mock window.matchMedia (not in jsdom) ────────────────────────────────────
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
 // ── Mock import.meta.env ───────────────────────────────────────────────────
 vi.stubEnv('VITE_WS_URL', 'ws://localhost:4000')
 vi.stubEnv('VITE_SSE_REST_URL', 'http://localhost:4001')
