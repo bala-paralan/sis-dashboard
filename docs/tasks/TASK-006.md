@@ -1,6 +1,6 @@
 # TASK-006: Store & API Test Coverage
 
-## Status: PENDING
+## Status: COMPLETED
 
 ## Goal
 Add tests for the remaining stores and API modules that currently lack test files.
