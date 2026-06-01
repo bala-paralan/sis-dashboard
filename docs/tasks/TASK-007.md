@@ -1,6 +1,6 @@
 # TASK-007: Authentication / Login Page
 
-## Status: PENDING
+## Status: COMPLETED
 
 ## Goal
 Add a login page and route-based auth guard so unauthenticated users are
