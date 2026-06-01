@@ -1,6 +1,6 @@
 # TASK-004: Camera Component & Store Test Coverage
 
-## Status: IN PROGRESS
+## Status: COMPLETED
 
 ## Goal
 Add comprehensive Vitest/Testing Library tests for all camera-related components and the cameraStore, matching the quality bar set in TASK-001 (273 tests, all green).
