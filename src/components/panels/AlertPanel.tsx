@@ -3,7 +3,7 @@
 // Full alert management panel with filtering, sparkline, ack flow
 // ============================================================
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'

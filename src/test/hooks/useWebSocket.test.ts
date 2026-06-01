@@ -64,7 +64,7 @@ class TrackingMockWS {
 beforeEach(() => {
   vi.useFakeTimers()
   TrackingMockWS.instances = []
-  global.WebSocket = TrackingMockWS as unknown as typeof WebSocket
+  globalThis.WebSocket = TrackingMockWS as unknown as typeof WebSocket
   resetStores()
 })
 

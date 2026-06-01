@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { App } from './App'
 import { LoginPage } from '@/components/pages/LoginPage'
 import { AuthGuard } from '@/components/layout/AuthGuard'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -20,6 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           }
         />
       </Routes>
+      <ToastContainer />
     </BrowserRouter>
   </React.StrictMode>
 )

@@ -6,7 +6,7 @@ import { useSensorStore } from '@/store/sensorStore'
 import type { SensorPayload } from '@/types/sensors'
 
 // Mock fetch for PTZ control commands
-global.fetch = vi.fn().mockResolvedValue({ ok: true })
+globalThis.fetch = vi.fn().mockResolvedValue({ ok: true })
 
 function makeOpticalSensor(id: string, modality: SensorPayload['modality'] = 'CCTV'): SensorPayload {
   return {

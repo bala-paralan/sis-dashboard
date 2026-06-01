@@ -16,7 +16,7 @@ const defaultSystemState = {
 describe('ScenarioSelector', () => {
   beforeEach(() => {
     useSystemStore.setState(defaultSystemState)
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true }),
     })
@@ -53,7 +53,7 @@ describe('ScenarioSelector', () => {
     fireEvent.change(select, { target: { value: 'INTRUSION' } })
     // Allow promise microtask to run
     await Promise.resolve()
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/scenario'),
       expect.objectContaining({ method: 'POST' })
     )

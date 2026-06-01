@@ -36,14 +36,14 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
 })) as unknown as typeof HTMLCanvasElement.prototype.getContext
 
 // ── Mock ResizeObserver (not in jsdom) ─────────────────────────────────────
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }))
 
 // ── Mock AudioContext ──────────────────────────────────────────────────────
-global.AudioContext = vi.fn().mockImplementation(() => ({
+globalThis.AudioContext = vi.fn().mockImplementation(() => ({
   createOscillator: vi.fn(() => ({
     connect: vi.fn(),
     start: vi.fn(),
@@ -71,7 +71,7 @@ class MockWebSocket {
     setTimeout(() => { this.onopen?.(new Event('open')) }, 0)
   }
 }
-global.WebSocket = MockWebSocket as unknown as typeof WebSocket
+globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
 
 // ── Mock localStorage ──────────────────────────────────────────────────────
 const localStorageMock = (() => {
