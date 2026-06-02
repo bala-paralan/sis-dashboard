@@ -7,6 +7,8 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
+import { exportAlertsCSV } from '@/utils/exportCSV'
+import { useToast } from '@/hooks/useToast'
 
 // ── Threat level filter chips ─────────────────────────────────
 const THREAT_LEVELS: (ThreatLevel | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
@@ -115,9 +117,16 @@ export function AlertPanel() {
   }, [allAlerts])
 
   const displayed = useMemo(() => filteredAlerts(), [filteredAlerts, filter, allAlerts])
+  const toast = useToast()
 
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+    toast.success('Alert acknowledged')
+  }
+
+  const handleExportCSV = () => {
+    exportAlertsCSV(displayed)
+    toast.success(`Exported ${displayed.length} alert${displayed.length !== 1 ? 's' : ''} to CSV`)
   }
 
   const critCount = allAlerts.filter(
@@ -194,6 +203,14 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+        <button
+          onClick={handleExportCSV}
+          disabled={displayed.length === 0}
+          title={displayed.length === 0 ? 'No alerts to export' : `Export ${displayed.length} alerts as CSV`}
+          className="text-[10px] px-2 h-7 rounded border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:text-text-primary transition-colors"
+        >
+          ⬇ Export CSV
+        </button>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
