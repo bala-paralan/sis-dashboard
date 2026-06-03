@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useAlertStore } from '@/store/alertStore'
 import { useSensorStore } from '@/store/sensorStore'
+import { exportCSV, exportSvgAsPng } from '@/utils/exportUtils'
 
 interface HeatCell {
   x: number
@@ -63,29 +64,6 @@ function useFalseAlarmRates(sensors: string[]) {
   return rates
 }
 
-function useConfidence() {
-  const [buckets, setBuckets] = useState<ConfidenceBucket[]>(() => [
-    { range: '50-60%', yolo: 3,  lstm: 5,  rf: 2  },
-    { range: '60-70%', yolo: 8,  lstm: 11, rf: 7  },
-    { range: '70-80%', yolo: 14, lstm: 9,  rf: 12 },
-    { range: '80-90%', yolo: 22, lstm: 18, rf: 20 },
-    { range: '90-100%',yolo: 31, lstm: 24, rf: 28 },
-  ])
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setBuckets((prev) =>
-        prev.map((b) => ({
-          ...b,
-          yolo: Math.max(0, b.yolo + Math.floor(Math.random() * 5 - 2)),
-          lstm: Math.max(0, b.lstm + Math.floor(Math.random() * 5 - 2)),
-          rf:   Math.max(0, b.rf   + Math.floor(Math.random() * 5 - 2)),
-        }))
-      )
-    }, 4000)
-    return () => clearInterval(iv)
-  }, [])
-  return buckets
-}
 
 function heatColor(v: number): string {
   if (v < 0.2) return `rgba(16,185,129,${0.1 + v * 0.5})`
@@ -94,7 +72,7 @@ function heatColor(v: number): string {
   return `rgba(239,68,68,${0.4 + v * 0.5})`
 }
 
-function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string }) {
+function Heatmap({ cells, timeWindow, svgRef }: { cells: HeatCell[]; timeWindow: string; svgRef?: React.RefObject<SVGSVGElement | null> }) {
   const COLS = 10, ROWS = 8
   const cellW = 22, cellH = 18
 
@@ -105,6 +83,7 @@ function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string 
         <span>W ← → E</span>
       </div>
       <svg
+        ref={svgRef}
         width={COLS * cellW + 40}
         height={ROWS * cellH + 20}
         className="block"
@@ -140,18 +119,69 @@ function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string 
 export function AdvancedAIPanel() {
   const [tab, setTab] = useState<'heatmap' | 'falseAlarm' | 'confidence'>('heatmap')
   const [timeWindow, setTimeWindow] = useState<'1h' | '6h' | '24h'>('1h')
+  const [recalibrating, setRecalibrating] = useState(false)
+  const svgRef = useRef<SVGSVGElement | null>(null)
   const alerts = useAlertStore((s) => s.alerts)
   const sensors = useSensorStore((s) => Array.from(s.sensors.keys()).slice(0, 6))
   const heatCells = useHeatmap(timeWindow)
   const falseAlarmRates = useFalseAlarmRates(sensors.length > 0 ? sensors : ['S01', 'S02', 'S03', 'S04', 'S05'])
-  const confidenceBuckets = useConfidence()
+  const [confidenceBuckets, setConfidenceBuckets] = useState(() => [
+    { range: '50-60%', yolo: 3,  lstm: 5,  rf: 2  },
+    { range: '60-70%', yolo: 8,  lstm: 11, rf: 7  },
+    { range: '70-80%', yolo: 14, lstm: 9,  rf: 12 },
+    { range: '80-90%', yolo: 22, lstm: 18, rf: 20 },
+    { range: '90-100%',yolo: 31, lstm: 24, rf: 28 },
+  ])
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showHeatmap    = isVisible('behaviouralPatternHeatmap')
   const showFAR        = isVisible('falseAlarmRateTracker')
   const showConfidence = isVisible('aiModelConfidenceMonitor')
 
+  // Animate confidence buckets
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setConfidenceBuckets((prev) =>
+        prev.map((b) => ({
+          ...b,
+          yolo: Math.max(0, b.yolo + Math.floor(Math.random() * 5 - 2)),
+          lstm: Math.max(0, b.lstm + Math.floor(Math.random() * 5 - 2)),
+          rf:   Math.max(0, b.rf   + Math.floor(Math.random() * 5 - 2)),
+        }))
+      )
+    }, 4000)
+    return () => clearInterval(iv)
+  }, [])
+
   const rejectedCount = useRef(Math.floor(Math.random() * 30 + 10))
+
+  const handleExportPng = () => {
+    if (svgRef.current) exportSvgAsPng(svgRef.current, `heatmap_${timeWindow}_${Date.now()}.png`)
+  }
+
+  const handleExportAuditCsv = () => {
+    const rows = Object.entries(falseAlarmRates).map(([id, rate]) => [
+      id,
+      (rate * 100).toFixed(1) + '%',
+      new Date().toISOString(),
+    ])
+    exportCSV(`false_alarm_audit_${Date.now()}.csv`, ['Sensor ID', 'False Alarm Rate', 'Exported At'], rows)
+  }
+
+  const handleRecalibrate = () => {
+    if (recalibrating) return
+    setRecalibrating(true)
+    setTimeout(() => {
+      setConfidenceBuckets([
+        { range: '50-60%', yolo: 4,  lstm: 4,  rf: 4  },
+        { range: '60-70%', yolo: 10, lstm: 10, rf: 10 },
+        { range: '70-80%', yolo: 15, lstm: 15, rf: 15 },
+        { range: '80-90%', yolo: 20, lstm: 20, rf: 20 },
+        { range: '90-100%',yolo: 28, lstm: 28, rf: 28 },
+      ])
+      setRecalibrating(false)
+    }, 2000)
+  }
 
   const avgFAR = Object.values(falseAlarmRates).reduce((s, v) => s + v, 0) / Math.max(1, Object.keys(falseAlarmRates).length)
   const maxBucket = Math.max(...confidenceBuckets.flatMap((b) => [b.yolo, b.lstm, b.rf]))
@@ -218,11 +248,14 @@ export function AdvancedAIPanel() {
                   {w}
                 </button>
               ))}
-              <button className="ml-auto py-[2px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={handleExportPng}
+                className="ml-auto py-[2px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 ⬇ Export PNG
               </button>
             </div>
-            <Heatmap cells={heatCells} timeWindow={timeWindow} />
+            <Heatmap cells={heatCells} timeWindow={timeWindow} svgRef={svgRef} />
 
             {/* High-activity zones */}
             <div className="mt-[10px]">
@@ -286,10 +319,16 @@ export function AdvancedAIPanel() {
             </div>
 
             <div className="mt-[10px] flex gap-1.5">
-              <button className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={() => alert(`Rejected alerts log: ${rejectedCount.current} alerts rejected in last 7 days.`)}
+                className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 📄 Rejected Alerts Log
               </button>
-              <button className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={handleExportAuditCsv}
+                className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 ⬇ Export Audit CSV
               </button>
             </div>
@@ -372,8 +411,12 @@ export function AdvancedAIPanel() {
                       {m.ok ? '● OK' : '⚠ DEGRADED'}
                     </span>
                     {!m.ok && (
-                      <button className="py-[2px] px-1.5 bg-[rgba(249,115,22,0.15)] border border-[rgba(249,115,22,0.4)] rounded-[3px] text-alert-medium cursor-pointer text-[9px]">
-                        Recalibrate
+                      <button
+                        onClick={handleRecalibrate}
+                        disabled={recalibrating}
+                        className="py-[2px] px-1.5 bg-[rgba(249,115,22,0.15)] border border-[rgba(249,115,22,0.4)] rounded-[3px] text-alert-medium cursor-pointer text-[9px] disabled:opacity-50"
+                      >
+                        {recalibrating ? '⟳ …' : 'Recalibrate'}
                       </button>
                     )}
                   </div>

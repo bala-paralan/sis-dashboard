@@ -62,7 +62,7 @@ describe('AlertRow', () => {
     expect(screen.getByText('Confirm')).toBeInTheDocument()
     // Second click confirms and calls onAck
     fireEvent.click(screen.getByText('Confirm'))
-    expect(onAck).toHaveBeenCalledWith('alert-001')
+    expect(onAck).toHaveBeenCalledWith('alert-001', '')
   })
 
   it('shows CRITICAL alert with class containing "critical"', () => {

@@ -116,8 +116,9 @@ export function AlertPanel() {
 
   const displayed = useMemo(() => filteredAlerts(), [filteredAlerts, filter, allAlerts])
 
-  const handleAck = (id: string) => {
-    acknowledgeAlert(id, '')
+  const handleAck = (id: string, comment: string) => {
+    const stamp = comment.trim() ? `OPERATOR: ${comment.trim()}` : 'OPERATOR'
+    acknowledgeAlert(id, stamp)
   }
 
   const critCount = allAlerts.filter(

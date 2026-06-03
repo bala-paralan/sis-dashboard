@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { exportCSV } from '@/utils/exportUtils'
 
 interface NodePower {
   nodeId: string
@@ -286,7 +287,24 @@ export function PowerPanel() {
                           </div>
                         )}
                         <div className="flex gap-1.5">
-                          <button className="flex-1 py-1 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+                          <button
+                            onClick={() => exportCSV(
+                              `vehicle_${v.id}_${Date.now()}.csv`,
+                              ['Field', 'Value'],
+                              [
+                                ['Callsign', v.callsign],
+                                ['Type', v.type],
+                                ['Fuel %', String(v.fuel_pct)],
+                                ['Battery V', String(v.battery_v)],
+                                ['Engine Temp °C', String(v.engine_temp_c)],
+                                ['Odometer km', String(v.odometer_km)],
+                                ['Status', v.status],
+                                ['Fault Codes', v.fault_codes.join('; ') || 'None'],
+                                ['Exported At', new Date().toISOString()],
+                              ]
+                            )}
+                            className="flex-1 py-1 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+                          >
                             ⬇ Export Report
                           </button>
                           <span className="flex items-center text-[10px] text-text-secondary">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
 
 interface Personnel {
   id: string
@@ -189,7 +190,31 @@ export function PersonnelPanel() {
   const gprEvents = useGPREvents()
   const madReadings = useMAD()
   const [tab, setTab] = useState<'personnel' | 'gpr' | 'mad'>('personnel')
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false)
+  const [broadcastToast, setBroadcastToast] = useState<string | null>(null)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const addAlert = useAlertStore((s) => s.addAlert)
+
+  const handleEmergencyBroadcast = () => {
+    const activeCount = personnel.filter((p) => p.status !== 'MISSED_CHECKIN').length
+    addAlert({
+      id: `EB-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      threat_level: 'CRITICAL',
+      sensor_family: 'Acoustic',
+      source_sensors: ['COMMS-01'],
+      classification: 'Emergency Broadcast',
+      description: `EMERGENCY BROADCAST to ${activeCount} active units — all units acknowledge position and status.`,
+      location: 'ALL SECTORS',
+      acknowledged: false,
+    })
+    const log = JSON.parse(localStorage.getItem('sis_broadcast_log') || '[]')
+    log.push({ ts: new Date().toISOString(), recipients: activeCount, type: 'EMERGENCY_BROADCAST' })
+    localStorage.setItem('sis_broadcast_log', JSON.stringify(log))
+    setShowBroadcastModal(false)
+    setBroadcastToast(`🚨 Broadcast sent to ${activeCount} units`)
+    setTimeout(() => setBroadcastToast(null), 3000)
+  }
 
   const showNavic = isVisible('navicGpsBoard')
   const showPersonnel = isVisible('personnelTracker')
@@ -207,7 +232,39 @@ export function PersonnelPanel() {
   ] as { id: typeof tab; label: string }[]
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {/* Toast */}
+      {broadcastToast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-bg-secondary border border-alert-critical rounded-md px-3 py-1.5 text-[11px] text-alert-critical shadow-lg whitespace-nowrap font-bold">
+          {broadcastToast}
+        </div>
+      )}
+      {/* Emergency Broadcast Confirm Modal */}
+      {showBroadcastModal && (
+        <div className="absolute inset-0 z-40 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-bg-secondary border border-alert-critical rounded-md p-4 max-w-[240px] w-full">
+            <div className="text-[11px] font-bold text-alert-critical mb-2">🚨 Emergency Broadcast</div>
+            <div className="text-[10px] text-text-secondary mb-1">Message:</div>
+            <div className="text-[10px] bg-bg-primary border border-border-color rounded p-2 mb-3 text-text-primary">
+              ALL UNITS: EMERGENCY BROADCAST — acknowledge position and status immediately.
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleEmergencyBroadcast}
+                className="flex-1 py-1 bg-[rgba(239,68,68,0.2)] border border-alert-critical rounded text-alert-critical cursor-pointer text-[10px] font-bold"
+              >
+                Send Broadcast
+              </button>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                className="flex-1 py-1 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Stats bar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span className="text-text-secondary">
@@ -224,7 +281,10 @@ export function PersonnelPanel() {
           </span>
         )}
         {showEmergency && (
-          <button className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold">
+          <button
+            onClick={() => setShowBroadcastModal(true)}
+            className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
+          >
             🚨 Emergency Broadcast
           </button>
         )}

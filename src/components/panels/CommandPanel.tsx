@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { printReport } from '@/utils/exportUtils'
 
 interface NodeStatus {
   id: string
@@ -95,12 +96,49 @@ export function CommandPanel() {
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
+  const [cibmsQueue, setCibmsQueue] = useState(3)
+  const [cibmsLastSync, setCibmsLastSync] = useState<Date>(new Date())
+  const [cibmsSyncing, setCibmsSyncing] = useState(false)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
   const showHandover = isVisible('shiftHandoverSummary')
   const showCibms    = isVisible('cibmsNatgridFeedMonitor')
+
+  const handleResync = () => {
+    if (cibmsSyncing) return
+    setCibmsSyncing(true)
+    setTimeout(() => {
+      setCibmsQueue(Math.floor(Math.random() * 8 + 1))
+      setCibmsLastSync(new Date())
+      setCibmsSyncing(false)
+    }, 1500)
+  }
+
+  const handleExportIncident = (sign: boolean) => {
+    const online = nodes.filter((n) => n.status === 'ONLINE').length
+    const threat = nodes.some((n) => n.threatLevel === 'HIGH') ? 'HIGH' : 'CLEAR/LOW'
+    const body = `
+      <pre>Date/Time: ${new Date().toLocaleString()}
+Node: BOP-ALPHA-01 | Operator: OPERATOR
+Active alerts: ${totalAlerts} | Nodes online: ${online}/${nodes.length}
+Threat level: ${threat}
+${sign ? '\nSigned by: OPERATOR  ' + new Date().toLocaleString() : ''}
+---
+${incidentText || '(no narrative provided)'}</pre>`
+    printReport(sign ? 'Signed Incident Report — BHQN' : 'Incident Report — BHQN', body)
+  }
+
+  const handleExportHandover = () => {
+    const body = `
+      <pre>Period: Last 12h
+Total alerts: ${totalAlerts + 12} | Sensor faults: 2
+Tracks: 7 | UAS contacts: 1 | GPR anomalies: 3
+---
+${handoverNotes || '(no handover notes provided)'}</pre>`
+    printReport('Shift Handover Report', body)
+  }
 
   const totalAlerts  = nodes.reduce((s, n) => s + n.alerts, 0)
   const offlineCount = nodes.filter((n) => n.status === 'OFFLINE').length
@@ -186,14 +224,18 @@ export function CommandPanel() {
               <div className="mt-[10px] bg-bg-secondary border border-border-color rounded-md px-[10px] py-2 text-[10px]">
                 <div className="font-bold mb-1.5">🔗 CIBMS / NATGRID Feed</div>
                 <div className="grid grid-cols-2 gap-1 text-text-secondary">
-                  <span>Queue depth: <strong className="text-text-primary">3 msgs</strong></span>
-                  <span>Last push: <strong className="text-sensor-acoustic">2s ago</strong></span>
+                  <span>Queue depth: <strong className="text-text-primary">{cibmsQueue} msgs</strong></span>
+                  <span>Last sync: <strong className="text-sensor-acoustic">{Math.round((Date.now() - cibmsLastSync.getTime()) / 1000)}s ago</strong></span>
                   <span>Errors (24h): <strong className="text-text-primary">0</strong></span>
                   <span>Schema: <strong className="text-sensor-acoustic">COMPLIANT</strong></span>
                 </div>
                 <div className="flex gap-1.5 mt-1.5">
-                  <button className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[9px]">
-                    ↺ Resync
+                  <button
+                    onClick={handleResync}
+                    disabled={cibmsSyncing}
+                    className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[9px] disabled:opacity-50"
+                  >
+                    {cibmsSyncing ? '⟳ Syncing…' : '↺ Resync'}
                   </button>
                   <span className="text-[10px] text-text-secondary leading-5">STANAG 4607/4609</span>
                 </div>
@@ -222,11 +264,17 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={() => handleExportIncident(false)}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ⬇ Export PDF → BHQN
               </button>
-              <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
-                📎 Attach Snapshot
+              <button
+                onClick={() => handleExportIncident(true)}
+                className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
+                ✍ Sign & Preview
               </button>
             </div>
           </div>
@@ -266,7 +314,10 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={handleExportHandover}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ✍ Sign &amp; Export PDF
               </button>
             </div>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
+import { exportKML } from '@/utils/exportUtils'
 
 interface DroneContact {
   id: string
@@ -113,7 +115,10 @@ export function CounterUASPanel() {
   const contacts = useDroneContacts()
   const [alarmActive, setAlarmActive] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [confirmEngageId, setConfirmEngageId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const addAlert = useAlertStore((s) => s.addAlert)
 
   const showThreatDisplay = isVisible('counterUasThreatDisplay')
   const showPlayback = isVisible('droneTrackPlayback')
@@ -125,8 +130,77 @@ export function CounterUASPanel() {
     if (historyRef.current.length > 200) historyRef.current = historyRef.current.slice(-200)
   }, [contacts])
 
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const handleEngageConfirm = (contactId: string) => {
+    const c = contacts.find((x) => x.id === contactId)
+    if (!c) return
+    addAlert({
+      id: `UAS-ENG-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      threat_level: 'CRITICAL',
+      sensor_family: 'Radar',
+      source_sensors: ['CUAS-01'],
+      classification: 'QRT Engagement',
+      description: `QRT Engaged: UAS-${c.id} (${c.classification}) bearing ${c.bearing_deg}° range ${c.range_m}m`,
+      location: `SECTOR-C bearing ${c.bearing_deg}° range ${c.range_m}m`,
+      acknowledged: false,
+    })
+    setConfirmEngageId(null)
+    setSelectedId(null)
+    showToast(`⚡ QRT engaged against UAS-${c.id}`)
+  }
+
+  const handleLogEngagement = (contactId: string) => {
+    const c = contacts.find((x) => x.id === contactId)
+    if (!c) return
+    const log = JSON.parse(localStorage.getItem('sis_engagement_log') || '[]')
+    log.push({ ts: new Date().toISOString(), id: contactId, classification: c.classification, bearing: c.bearing_deg, range: c.range_m })
+    localStorage.setItem('sis_engagement_log', JSON.stringify(log))
+    showToast(`📝 UAS-${contactId} logged (${log.length} total)`)
+  }
+
+  const handleExportKML = () => {
+    exportKML(`drone_tracks_${Date.now()}.kml`, historyRef.current)
+    showToast('⬇ KML exported')
+  }
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {/* Toast */}
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-bg-secondary border border-border-color rounded-md px-3 py-1.5 text-[11px] text-text-primary shadow-lg whitespace-nowrap">
+          {toast}
+        </div>
+      )}
+      {/* Engage confirm modal */}
+      {confirmEngageId && (
+        <div className="absolute inset-0 z-40 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-bg-secondary border border-alert-critical rounded-md p-4 max-w-[220px] w-full">
+            <div className="text-[11px] font-bold text-alert-critical mb-2">⚡ Confirm QRT Engagement</div>
+            <div className="text-[10px] text-text-secondary mb-3">
+              Engage Quick Reaction Team against UAS-{confirmEngageId}? This will create a CRITICAL alert.
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => handleEngageConfirm(confirmEngageId)}
+                className="flex-1 py-1 bg-[rgba(239,68,68,0.2)] border border-alert-critical rounded text-alert-critical cursor-pointer text-[10px] font-bold"
+              >
+                Confirm Engage
+              </button>
+              <button
+                onClick={() => setConfirmEngageId(null)}
+                className="flex-1 py-1 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span
@@ -236,11 +310,13 @@ export function CounterUASPanel() {
                       {selectedId === c.id && (
                         <div className="mt-2 flex gap-1.5">
                           <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmEngageId(c.id) }}
                             className="flex-1 py-1 px-1.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-semibold"
                           >
                             ⚡ Engage QRT
                           </button>
                           <button
+                            onClick={(e) => { e.stopPropagation(); handleLogEngagement(c.id) }}
                             className="flex-1 py-1 px-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                           >
                             📝 Log Engagement
@@ -276,6 +352,7 @@ export function CounterUASPanel() {
                   </button>
                 ))}
                 <button
+                  onClick={handleExportKML}
                   className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                 >
                   ⬇ Export KML

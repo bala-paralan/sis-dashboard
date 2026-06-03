@@ -168,36 +168,76 @@ interface PTZProps {
   sendMessage: (msg: object) => void
 }
 
+const PTZ_LABELS: Record<string, string> = {
+  TILT_UP: '↑', TILT_DOWN: '↓', PAN_LEFT: '←', PAN_RIGHT: '→',
+  ZOOM_IN: '+', ZOOM_OUT: '−', STOP: '■',
+}
+
 function PTZControls({ sensorId, sendMessage }: PTZProps) {
+  const [activeCmd, setActiveCmd] = useState<string | null>(null)
+  const [ptzToast, setPtzToast] = useState<string | null>(null)
+
   const sendPTZ = useCallback(
     (command: string) => {
       sendMessage({
         type: 'PTZ_CONTROL',
         payload: { sensor_id: sensorId, command, speed: 1.0 },
       })
+      // Log to localStorage
+      const log = JSON.parse(localStorage.getItem('sis_ptz_log') || '[]')
+      log.push({ ts: new Date().toISOString(), sensorId, command })
+      if (log.length > 200) log.splice(0, log.length - 200)
+      localStorage.setItem('sis_ptz_log', JSON.stringify(log))
+      // Show toast
+      setPtzToast(`PTZ ${PTZ_LABELS[command] ?? command} sent`)
+      setTimeout(() => setPtzToast(null), 1500)
     },
     [sensorId, sendMessage]
   )
 
-  const btnCls = 'w-8 h-8 flex items-center justify-center bg-bg-tertiary border border-border-color rounded cursor-pointer text-text-primary text-sm transition-all duration-100 select-none'
+  const btnCls = (cmd: string) =>
+    [
+      'w-8 h-8 flex items-center justify-center border rounded cursor-pointer text-sm transition-all duration-100 select-none',
+      activeCmd === cmd
+        ? 'bg-accent-blue border-accent-blue text-white'
+        : 'bg-bg-tertiary border-border-color text-text-primary',
+    ].join(' ')
+
+  const ptzBtn = (cmd: string, label: string, title: string, ariaLabel?: string) => (
+    <button
+      className={btnCls(cmd)}
+      title={title}
+      aria-label={ariaLabel}
+      onMouseDown={() => { setActiveCmd(cmd); sendPTZ(cmd) }}
+      onMouseUp={() => setActiveCmd(null)}
+      onMouseLeave={() => setActiveCmd(null)}
+    >
+      {label}
+    </button>
+  )
 
   return (
-    <div className="flex flex-col items-center gap-1 p-2 bg-bg-secondary border-t border-border-color shrink-0">
+    <div className="flex flex-col items-center gap-1 p-2 bg-bg-secondary border-t border-border-color shrink-0 relative">
+      {ptzToast && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-bg-secondary border border-border-color rounded px-2 py-0.5 text-[10px] text-text-primary whitespace-nowrap z-10">
+          {ptzToast}
+        </div>
+      )}
       <div className="text-[10px] text-text-secondary mb-0.5">PTZ: {sensorId}</div>
       <div className="grid gap-1" style={{ gridTemplateColumns: '32px 32px 32px' }}>
         <div />
-        <button className={btnCls} onClick={() => sendPTZ('TILT_UP')} title="Tilt Up">↑</button>
+        {ptzBtn('TILT_UP', '↑', 'Tilt Up')}
         <div />
-        <button className={btnCls} onClick={() => sendPTZ('PAN_LEFT')} title="Pan Left">←</button>
-        <button className={btnCls} onClick={() => sendPTZ('STOP')} title="Stop" aria-label="Stop">■</button>
-        <button className={btnCls} onClick={() => sendPTZ('PAN_RIGHT')} title="Pan Right">→</button>
+        {ptzBtn('PAN_LEFT', '←', 'Pan Left')}
+        {ptzBtn('STOP', '■', 'Stop', 'Stop')}
+        {ptzBtn('PAN_RIGHT', '→', 'Pan Right')}
         <div />
-        <button className={btnCls} onClick={() => sendPTZ('TILT_DOWN')} title="Tilt Down">↓</button>
+        {ptzBtn('TILT_DOWN', '↓', 'Tilt Down')}
         <div />
       </div>
       <div className="flex gap-1 mt-0.5">
-        <button className={btnCls} onClick={() => sendPTZ('ZOOM_IN')} title="Zoom In">+</button>
-        <button className={btnCls} onClick={() => sendPTZ('ZOOM_OUT')} title="Zoom Out">−</button>
+        {ptzBtn('ZOOM_IN', '+', 'Zoom In')}
+        {ptzBtn('ZOOM_OUT', '−', 'Zoom Out')}
       </div>
     </div>
   )

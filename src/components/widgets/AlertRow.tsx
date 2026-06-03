@@ -4,7 +4,7 @@ import { formatRelativeTime, getThreatLevelColor } from '@/utils/formatters'
 
 interface AlertRowProps {
   alert: Alert
-  onAck: (id: string) => void
+  onAck: (id: string, comment: string) => void
 }
 
 const LEVEL_INITIAL: Record<string, string> = {
@@ -25,7 +25,7 @@ export function AlertRow({ alert, onAck }: AlertRowProps) {
   const handleAckClick = () => {
     if (alert.acknowledged) return
     if (showAckInput) {
-      onAck(alert.id)
+      onAck(alert.id, ackComment)
       setShowAckInput(false)
       setAckComment('')
     } else {
@@ -120,9 +120,9 @@ export function AlertRow({ alert, onAck }: AlertRowProps) {
       )}
 
       {/* Annotation */}
-      {alert.acknowledged && alert.annotation && (
+      {alert.acknowledged && (
         <div className="px-3 pb-1.5 pl-11 text-[10px] text-text-secondary italic">
-          "{alert.annotation}"
+          {alert.annotation ? `"${alert.annotation}"` : 'Acknowledged by OPERATOR'}
         </div>
       )}
     </div>
