@@ -105,11 +105,38 @@ function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boole
   }
 }
 
+export interface LayoutPreset {
+  name: string
+  createdAt: string
+  widgets: Record<string, { visible: boolean; updateRateHz?: number; threshold?: number }>
+  panels: Record<string, boolean>
+  defaultExpandedPanel: string | null
+}
+
+const PRESETS_KEY = 'sis-dashboard-presets'
+const MAX_PRESETS = 5
+
+function loadPresets(): LayoutPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY)
+    return raw ? (JSON.parse(raw) as LayoutPreset[]) : []
+  } catch {
+    return []
+  }
+}
+
+function savePresetsToStorage(presets: LayoutPreset[]) {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(presets))
+}
+
 interface SettingsState {
   widgets: WidgetDef[]
   panels: Record<string, boolean>
   defaultExpandedPanel: string | null
   settingsOpen: boolean
+  presets: LayoutPreset[]
+  soundEnabled: boolean
+  soundVolume: number
 
   toggleWidget: (id: string) => void
   setWidgetOption: (id: string, key: 'updateRateHz' | 'threshold', value: number) => void
@@ -120,6 +147,13 @@ interface SettingsState {
   isWidgetVisible: (id: string) => boolean
   isPanelVisible: (panelId: string) => boolean
   widgetsByCategory: () => Record<string, WidgetDef[]>
+  toggleSound: () => void
+  setSoundVolume: (v: number) => void
+  savePreset: (name: string) => void
+  loadPreset: (name: string) => void
+  deletePreset: (name: string) => void
+  exportPreset: (name: string) => void
+  importPreset: (preset: LayoutPreset) => void
 }
 
 function persist(state: Pick<SettingsState, 'widgets' | 'panels' | 'defaultExpandedPanel'>) {
@@ -138,6 +172,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   panels: initial.panels,
   defaultExpandedPanel: initial.defaultExpandedPanel,
   settingsOpen: false,
+  presets: loadPresets(),
+  soundEnabled: localStorage.getItem('sis-sound-enabled') !== 'false',
+  soundVolume: Number(localStorage.getItem('sis-sound-volume') ?? 0.5),
 
   toggleWidget: (id) => {
     set((s) => {
@@ -188,5 +225,72 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       acc[w.category].push(w)
       return acc
     }, {})
+  },
+
+  toggleSound: () => {
+    const enabled = !get().soundEnabled
+    localStorage.setItem('sis-sound-enabled', String(enabled))
+    set({ soundEnabled: enabled })
+  },
+
+  setSoundVolume: (v) => {
+    localStorage.setItem('sis-sound-volume', String(v))
+    set({ soundVolume: v })
+  },
+
+  savePreset: (name) => {
+    const { widgets, panels, defaultExpandedPanel, presets } = get()
+    const preset: LayoutPreset = {
+      name,
+      createdAt: new Date().toISOString(),
+      widgets: Object.fromEntries(widgets.map((w) => [w.id, { visible: w.visible, updateRateHz: w.updateRateHz, threshold: w.threshold }])),
+      panels,
+      defaultExpandedPanel,
+    }
+    const filtered = presets.filter((p) => p.name !== name)
+    const updated = [preset, ...filtered].slice(0, MAX_PRESETS)
+    savePresetsToStorage(updated)
+    set({ presets: updated })
+  },
+
+  loadPreset: (name) => {
+    const preset = get().presets.find((p) => p.name === name)
+    if (!preset) return
+    const widgets = DEFAULT_WIDGETS.map((w) => ({
+      ...w,
+      visible: preset.widgets?.[w.id]?.visible ?? w.visible,
+      updateRateHz: preset.widgets?.[w.id]?.updateRateHz ?? w.updateRateHz,
+      threshold: preset.widgets?.[w.id]?.threshold ?? w.threshold,
+    }))
+    const panels = { ...DEFAULT_PANELS, ...preset.panels }
+    persist({ widgets, panels, defaultExpandedPanel: preset.defaultExpandedPanel })
+    set({ widgets, panels, defaultExpandedPanel: preset.defaultExpandedPanel })
+  },
+
+  deletePreset: (name) => {
+    const updated = get().presets.filter((p) => p.name !== name)
+    savePresetsToStorage(updated)
+    set({ presets: updated })
+  },
+
+  exportPreset: (name) => {
+    const preset = get().presets.find((p) => p.name === name)
+    if (!preset) return
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `sis-preset-${name.replace(/\s+/g, '-').toLowerCase()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
+  importPreset: (preset) => {
+    const { presets } = get()
+    if (presets.length >= MAX_PRESETS && !presets.find((p) => p.name === preset.name)) return
+    const filtered = presets.filter((p) => p.name !== preset.name)
+    const updated = [preset, ...filtered].slice(0, MAX_PRESETS)
+    savePresetsToStorage(updated)
+    set({ presets: updated })
   },
 }))

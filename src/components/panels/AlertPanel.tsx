@@ -3,8 +3,9 @@
 // Full alert management panel with filtering, sparkline, ack flow
 // ============================================================
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
@@ -23,11 +24,14 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 // ── Audio alert helper ────────────────────────────────────────
-function playBeep() {
+function playBeep(volume = 0.5) {
   try {
     const audioCtx = new AudioContext()
     const osc = audioCtx.createOscillator()
-    osc.connect(audioCtx.destination)
+    const gain = audioCtx.createGain()
+    gain.gain.value = volume
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
     osc.frequency.value = 880
     osc.start()
     osc.stop(audioCtx.currentTime + 0.3)
@@ -78,6 +82,28 @@ function AlertSparkline({ data }: SparklineProps) {
   )
 }
 
+// ── CSV export ────────────────────────────────────────────────
+function exportAlertsCSV(alerts: ReturnType<typeof useAlertStore.getState>['alerts']) {
+  const header = 'timestamp,threat_level,sensor_family,description,location,acknowledged,annotation'
+  const rows = alerts.map((a) => [
+    a.timestamp,
+    a.threat_level,
+    a.sensor_family ?? '',
+    `"${(a.description ?? '').replace(/"/g, '""')}"`,
+    `"${(a.location ?? '').replace(/"/g, '""')}"`,
+    a.acknowledged ? 'true' : 'false',
+    `"${(a.annotation ?? '').replace(/"/g, '""')}"`,
+  ].join(','))
+  const csv = [header, ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `alerts-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ── Main component ────────────────────────────────────────────
 export function AlertPanel() {
   const allAlerts = useAlertStore((s) => s.alerts)
@@ -85,6 +111,8 @@ export function AlertPanel() {
   const setFilter = useAlertStore((s) => s.setFilter)
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
+  const soundEnabled = useSettingsStore((s) => s.soundEnabled)
+  const soundVolume = useSettingsStore((s) => s.soundVolume)
 
   const prevCountRef = useRef(0)
 
@@ -108,8 +136,8 @@ export function AlertPanel() {
     const critHigh = allAlerts.filter(
       (a) => !a.acknowledged && (a.threat_level === 'CRITICAL' || a.threat_level === 'HIGH')
     ).length
-    if (critHigh > prevCountRef.current) {
-      playBeep()
+    if (critHigh > prevCountRef.current && soundEnabled) {
+      playBeep(soundVolume)
     }
     prevCountRef.current = critHigh
   }, [allAlerts])
@@ -126,7 +154,7 @@ export function AlertPanel() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      {/* Header — just the sparkline + critical badge */}
+      {/* Header — sparkline + critical badge + export */}
       <div className="py-1 px-3 border-b border-border-color text-[13px] font-semibold text-text-secondary bg-panel-header-bg flex items-center justify-between shrink-0">
         <span className="flex items-center gap-2">
           {critCount > 0 && (
@@ -138,7 +166,16 @@ export function AlertPanel() {
             </span>
           )}
         </span>
-        <AlertSparkline data={sparkData} />
+        <div className="flex items-center gap-2">
+          <AlertSparkline data={sparkData} />
+          <button
+            onClick={() => exportAlertsCSV(displayed)}
+            className="text-[10px] py-[3px] px-2 rounded border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer hover:text-text-primary shrink-0"
+            title="Export filtered alerts as CSV"
+          >
+            ⬇ CSV
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}

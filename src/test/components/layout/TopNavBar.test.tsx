@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { useSystemStore } from '@/store/systemStore'
 import { useAlertStore } from '@/store/alertStore'
 import type { Alert } from '@/types/sensors'
+import React from 'react'
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 function makeAlert(id: string, acked = false): Alert {
   return {
@@ -37,35 +43,33 @@ beforeEach(() => {
 
 describe('TopNavBar', () => {
   it('renders without crashing', () => {
-    const { container } = render(<TopNavBar />)
+    const { container } = renderWithRouter(<TopNavBar />)
     expect(container.firstChild).toBeInTheDocument()
   })
 
   it("shows 'SIS' logo text", () => {
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('SIS')).toBeInTheDocument()
   })
 
   it("shows 'IINVSYS' subtitle", () => {
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('IINVSYS')).toBeInTheDocument()
   })
 
   it('shows the current UTC time in HH:mm:ss format', () => {
-    render(<TopNavBar />)
-    // The time is displayed as "HH:mm:ss UTC"
+    renderWithRouter(<TopNavBar />)
     const timeEl = screen.getByText(/^\d{2}:\d{2}:\d{2} UTC$/)
     expect(timeEl).toBeInTheDocument()
   })
 
   it('shows the current scenario name (NORMAL by default)', () => {
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('NORMAL')).toBeInTheDocument()
   })
 
   it('shows site selector dropdown with BOP-ALPHA-01 and BOP-BETA-01 options', () => {
-    render(<TopNavBar />)
-    // Two comboboxes exist (site selector + scenario selector); pick the first (site)
+    renderWithRouter(<TopNavBar />)
     const selects = screen.getAllByRole('combobox')
     expect(selects.length).toBeGreaterThanOrEqual(1)
     const siteSelect = selects[0]
@@ -75,14 +79,13 @@ describe('TopNavBar', () => {
   })
 
   it('shows 0 unacknowledged alerts badge when no alerts', () => {
-    render(<TopNavBar />)
-    // The badge should not render when unackedCount === 0
+    renderWithRouter(<TopNavBar />)
     expect(screen.queryByText(/^[1-9]\d*$/)).not.toBeInTheDocument()
   })
 
   it('shows unacknowledged count badge when there are unacked alerts', () => {
     useAlertStore.setState({ alerts: [makeAlert('a1'), makeAlert('a2')] })
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('2')).toBeInTheDocument()
   })
 
@@ -90,44 +93,41 @@ describe('TopNavBar', () => {
     useAlertStore.setState({
       alerts: [makeAlert('a1', true), makeAlert('a2', true)],
     })
-    render(<TopNavBar />)
-    // No badge — unackedCount is 0
+    renderWithRouter(<TopNavBar />)
     expect(screen.queryByText('2')).not.toBeInTheDocument()
   })
 
   it('renders ConnectionBadge component showing connection status text', () => {
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('Connected')).toBeInTheDocument()
   })
 
   it('renders ThemeToggle button', () => {
-    render(<TopNavBar />)
-    // ThemeToggle renders a button with a title about switching mode
+    renderWithRouter(<TopNavBar />)
     const toggleBtn = screen.getByTitle(/switch to (light|dark) mode/i)
     expect(toggleBtn).toBeInTheDocument()
   })
 
   it("shows 'Operator' role label", () => {
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('Operator')).toBeInTheDocument()
   })
 
   it("INTRUSION scenario shows 'INTRUSION' in the nav bar", () => {
     useSystemStore.setState({ scenario: 'INTRUSION' })
-    render(<TopNavBar />)
+    renderWithRouter(<TopNavBar />)
     expect(screen.getByText('INTRUSION')).toBeInTheDocument()
   })
 
   it('scenario chip changes when store scenario changes', () => {
-    const { rerender } = render(<TopNavBar />)
+    const { rerender } = renderWithRouter(<TopNavBar />)
     expect(screen.getByText('NORMAL')).toBeInTheDocument()
 
     act(() => {
       useSystemStore.setState({ scenario: 'ELEVATED' })
     })
-    rerender(<TopNavBar />)
+    rerender(<MemoryRouter><TopNavBar /></MemoryRouter>)
     expect(screen.getByText('ELEVATED')).toBeInTheDocument()
-    // The scenario select value should reflect the new scenario
     const selects = screen.getAllByRole('combobox')
     const scenarioSelect = selects.find(
       (s) => (s as HTMLSelectElement).value === 'ELEVATED'

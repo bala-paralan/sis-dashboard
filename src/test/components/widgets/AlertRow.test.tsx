@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { useAuthStore } from '@/store/authStore'
 import type { Alert } from '@/types/sensors'
 
 function mockAlert(overrides = {}): Alert {
@@ -23,6 +24,11 @@ describe('AlertRow', () => {
 
   beforeEach(() => {
     onAck = vi.fn()
+    // Set OPERATOR user so ACK buttons are visible
+    useAuthStore.setState({
+      user: { id: 'test', email: 'op@test.com', displayName: 'Test Op', role: 'OPERATOR', createdAt: '' },
+      isAuthenticated: true,
+    })
   })
 
   it('renders without crashing', () => {

@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
+import { logout } from '@/api/auth'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
 
 const SITES = ['BOP-ALPHA-01', 'BOP-BETA-01']
+
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN:    'var(--alert-high)',
+  OPERATOR: 'var(--sensor-acoustic)',
+  VIEWER:   'var(--text-secondary)',
+}
 
 function formatUTCTime(d: Date): string {
   const hh = String(d.getUTCHours()).padStart(2, '0')
@@ -22,12 +32,28 @@ export function TopNavBar() {
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
 
+  const user = useAuthStore((s) => s.user)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  const unreadCount = useNotificationStore((s) => s.unreadCount)
+  const setDrawerOpen = useNotificationStore((s) => s.setDrawerOpen)
+
+  const navigate = useNavigate()
+
   useEffect(() => {
     const id = setInterval(() => {
       setTime(formatUTCTime(new Date()))
     }, 1000)
     return () => clearInterval(id)
   }, [])
+
+  const handleLogout = async () => {
+    await logout()
+    clearAuth()
+    navigate('/login', { replace: true })
+  }
+
+  const roleColor = user?.role ? ROLE_COLORS[user.role] ?? 'var(--text-secondary)' : 'var(--text-secondary)'
 
   return (
     <header
@@ -108,19 +134,55 @@ export function TopNavBar() {
         </div>
       )}
 
+      {/* Notification bell */}
+      <button
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Notifications"
+        className="relative w-[34px] h-[34px] rounded-[6px] border border-border-color bg-transparent text-text-secondary cursor-pointer flex items-center justify-center text-[16px] shrink-0 transition-all duration-150 hover:bg-bg-tertiary"
+      >
+        🔔
+        {unreadCount > 0 && (
+          <span
+            className="absolute -top-[4px] -right-[4px] min-w-[16px] h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center px-[3px]"
+            style={{ background: 'var(--alert-critical)' }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+
       {/* Theme toggle */}
       <ThemeToggle />
 
       {/* User badge */}
       <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
         <span
-          className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
-          style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
+          className="w-[7px] h-[7px] rounded-full shrink-0"
+          style={{ background: roleColor, boxShadow: `0 0 5px ${roleColor}` }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.email ?? 'Operator'}
         </span>
+        {user?.role && (
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.05em] px-[5px] py-[1px] rounded"
+            style={{ background: `${roleColor}22`, color: roleColor, border: `1px solid ${roleColor}44` }}
+          >
+            {user.role}
+          </span>
+        )}
       </div>
+
+      {/* Logout */}
+      {user && (
+        <button
+          onClick={() => void handleLogout()}
+          className="text-[11px] text-text-secondary border border-border-color bg-transparent rounded-[6px] px-[10px] h-[30px] cursor-pointer shrink-0 hover:text-alert-critical hover:border-alert-critical transition-colors duration-150"
+          aria-label="Logout"
+        >
+          ⏻
+        </button>
+      )}
     </header>
   )
 }
