@@ -57,8 +57,8 @@ describe('CounterUASPanel', () => {
   it('shows no-contact empty state or contact list', () => {
     render(<CounterUASPanel />)
     const noContact = screen.queryByText(/No UAS contacts detected/i)
-    const uasLabel  = screen.queryByText(/UAS-/i)
-    expect(noContact !== null || uasLabel !== null).toBe(true)
+    const uasLabels = screen.queryAllByText(/UAS-/i)
+    expect(noContact !== null || uasLabels.length > 0).toBe(true)
   })
 
   it('shows Track History section when droneTrackPlayback widget is enabled', () => {
