@@ -10,12 +10,14 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png'
 
 L.Icon.Default.mergeOptions({ iconUrl, shadowUrl: iconShadow })
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   MapContainer,
   TileLayer,
   LayersControl,
   Polygon,
+  ScaleControl,
+  useMapEvents,
 } from 'react-leaflet'
 import { useSensorStore } from '@/store/sensorStore'
 import { useAlertStore } from '@/store/alertStore'
@@ -24,6 +26,18 @@ import { SensorMarker } from '@/components/map/SensorMarker'
 import { TrackMarker } from '@/components/map/TrackMarker'
 import { ZoneDrawer } from '@/components/map/ZoneDrawer'
 import { GeofenceOverlay } from '@/components/map/GeofenceOverlay'
+
+const MAP_LAYER_KEY = 'sis-map-layer'
+
+function LayerPersist({ onLayerChange }: { onLayerChange: (name: string) => void }) {
+  useMapEvents({
+    baselayerchange: (e) => {
+      localStorage.setItem(MAP_LAYER_KEY, e.name)
+      onLayerChange(e.name)
+    },
+  })
+  return null
+}
 
 // ── Hardcoded alert zones ────────────────────────────────────
 const ZONE_A: [number, number][] = [
@@ -144,6 +158,11 @@ export function LiveMapPanel() {
   const userZones = useGeofenceStore((s) => s.zones)
   const [isDrawing, setIsDrawing] = useState(false)
   const [showZoneList, setShowZoneList] = useState(false)
+  const [activeLayer, setActiveLayer] = useState(() => localStorage.getItem(MAP_LAYER_KEY) ?? 'OpenStreetMap')
+  const [showScale, setShowScale] = useState(true)
+  const [showCompass, setShowCompass] = useState(true)
+
+  const savedLayer = localStorage.getItem(MAP_LAYER_KEY) ?? 'OpenStreetMap'
 
   const sensorCount = sensors.size
   const trackCount = tracks.length
@@ -189,13 +208,33 @@ export function LiveMapPanel() {
           <button
             onClick={() => setShowZoneList((v) => !v)}
             className="text-[10px] font-semibold px-2 py-[2px] rounded border cursor-pointer"
-            style={{
-              background: showZoneList ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              borderColor: 'var(--panel-border)',
-            }}
+            style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderColor: 'var(--panel-border)' }}
           >
             Zones ({userZones.length})
+          </button>
+          <button
+            onClick={() => setShowScale((v) => !v)}
+            title="Toggle scale bar"
+            className="text-[10px] px-2 py-[2px] rounded border cursor-pointer"
+            style={{
+              background: showScale ? 'rgba(59,130,246,0.15)' : 'var(--bg-tertiary)',
+              color: showScale ? 'var(--accent-blue)' : 'var(--text-muted)',
+              borderColor: showScale ? 'var(--accent-blue)' : 'var(--panel-border)',
+            }}
+          >
+            ⊕ Scale
+          </button>
+          <button
+            onClick={() => setShowCompass((v) => !v)}
+            title="Toggle compass rose"
+            className="text-[10px] px-2 py-[2px] rounded border cursor-pointer"
+            style={{
+              background: showCompass ? 'rgba(59,130,246,0.15)' : 'var(--bg-tertiary)',
+              color: showCompass ? 'var(--accent-blue)' : 'var(--text-muted)',
+              borderColor: showCompass ? 'var(--accent-blue)' : 'var(--panel-border)',
+            }}
+          >
+            🧭
           </button>
         </div>
       </div>
@@ -211,22 +250,38 @@ export function LiveMapPanel() {
           style={{ cursor: isDrawing ? 'crosshair' : undefined }}
         >
           <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="OpenStreetMap">
+            <LayersControl.BaseLayer checked={savedLayer === 'OpenStreetMap'} name="OpenStreetMap">
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 maxZoom={19}
               />
             </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="Esri Satellite">
+            <LayersControl.BaseLayer checked={savedLayer === 'Esri Satellite'} name="Esri Satellite">
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution="Tiles &copy; Esri"
                 maxZoom={18}
               />
             </LayersControl.BaseLayer>
+            <LayersControl.BaseLayer checked={savedLayer === 'Terrain'} name="Terrain">
+              <TileLayer
+                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+                maxZoom={17}
+              />
+            </LayersControl.BaseLayer>
+            <LayersControl.BaseLayer checked={savedLayer === 'Hybrid'} name="Hybrid">
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution="Tiles &copy; Esri + OSM"
+                maxZoom={18}
+              />
+            </LayersControl.BaseLayer>
           </LayersControl>
 
+          {showScale && <ScaleControl position="bottomleft" imperial={false} />}
+          <LayerPersist onLayerChange={setActiveLayer} />
           <MapOverlays />
           <GeofenceOverlay />
           <ZoneDrawer
@@ -235,6 +290,37 @@ export function LiveMapPanel() {
             onCancel={() => setIsDrawing(false)}
           />
         </MapContainer>
+
+        {/* Compass rose */}
+        {showCompass && (
+          <div
+            className="absolute bottom-8 right-2 z-[400] pointer-events-none select-none"
+            style={{ width: 48, height: 48 }}
+            aria-label="Compass"
+          >
+            <svg viewBox="0 0 48 48" width={48} height={48}>
+              <circle cx="24" cy="24" r="22" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+              <polygon points="24,4 20,24 24,20 28,24" fill="#EF4444" />
+              <polygon points="24,44 20,24 24,28 28,24" fill="rgba(255,255,255,0.6)" />
+              <polygon points="4,24 24,20 20,24 24,28" fill="rgba(255,255,255,0.4)" />
+              <polygon points="44,24 24,20 28,24 24,28" fill="rgba(255,255,255,0.4)" />
+              <text x="24" y="11" textAnchor="middle" fontSize="7" fill="#EF4444" fontWeight="bold">N</text>
+              <text x="24" y="43" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.6)">S</text>
+              <text x="7" y="27" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.5)">W</text>
+              <text x="41" y="27" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.5)">E</text>
+            </svg>
+          </div>
+        )}
+
+        {/* Active layer badge */}
+        <div className="absolute bottom-2 left-2 z-[400] pointer-events-none">
+          <span
+            className="text-[9px] px-1.5 py-0.5 rounded font-mono"
+            style={{ background: 'rgba(0,0,0,0.6)', color: 'rgba(255,255,255,0.7)' }}
+          >
+            {activeLayer}
+          </span>
+        </div>
 
         {/* Zone list sidebar */}
         {showZoneList && <ZoneList onClose={() => setShowZoneList(false)} />}

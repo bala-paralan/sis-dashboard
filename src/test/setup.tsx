@@ -113,6 +113,7 @@ vi.mock('react-leaflet', () => {
     ),
     Polygon: () => null,
     Polyline: () => null,
+    ScaleControl: () => null,
     Tooltip: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="tooltip">{children}</div>
     ),

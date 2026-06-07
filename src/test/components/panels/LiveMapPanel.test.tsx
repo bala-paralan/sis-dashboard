@@ -25,6 +25,7 @@ vi.mock('react-leaflet', async () => {
       React.createElement('div', { 'data-testid': 'marker' }, children),
     Polygon: () => null,
     Polyline: () => null,
+    ScaleControl: () => null,
     Tooltip: ({ children }: { children?: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'tooltip' }, children),
     Popup: ({ children }: { children?: React.ReactNode }) =>

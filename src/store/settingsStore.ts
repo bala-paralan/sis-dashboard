@@ -37,7 +37,7 @@ const DEFAULT_WIDGETS: WidgetDef[] = [
   { id: 'anomalyScoreGauge',      label: 'Anomaly Score Gauge',        category: 'AI Analytics & Prediction', panelId: 'aiml',        visible: true  },
   // Specialist Detection
   { id: 'etdChemicalAlert',       label: 'ETD / Chemical Alert Panel',  category: 'Specialist Detection',      panelId: 'sensors',     visible: true  },
-  { id: 'satelliteImageOverlay',  label: 'Satellite / Archive Image',   category: 'Specialist Detection',      panelId: 'map',         visible: false },
+  { id: 'satelliteImageOverlay',  label: 'Satellite / Archive Image',   category: 'Specialist Detection',      panelId: 'map',         visible: true  },
   // Utility
   { id: 'customChart',            label: 'Custom Chart Widget',         category: 'Utility & Configuration',   panelId: 'health',      visible: false },
   { id: 'operatorNotes',          label: 'Operator Notes / Annotations',category: 'Utility & Configuration',   panelId: 'alerts',      visible: true  },
