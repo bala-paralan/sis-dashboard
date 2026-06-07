@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
+import { useAuthStore } from '@/store/authStore'
+import { printIncidentReport, printHandoverReport, exportAlertsCsv } from '@/utils/exportReports'
 
 interface NodeStatus {
   id: string
@@ -94,8 +97,11 @@ export function CommandPanel() {
   const [tab, setTab] = useState<'nodes' | 'incident' | 'handover'>('nodes')
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
+  const [handoverPeriod, setHandoverPeriod] = useState<'8h' | '12h' | '24h'>('12h')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const alerts = useAlertStore((s) => s.alerts)
+  const user = useAuthStore((s) => s.user)
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
@@ -222,11 +228,17 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={() => printIncidentReport({ nodes, totalAlerts, narrative: incidentText, operator: user?.displayName ?? 'Operator' })}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ⬇ Export PDF → BHQN
               </button>
-              <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
-                📎 Attach Snapshot
+              <button
+                onClick={() => exportAlertsCsv(alerts)}
+                className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
+                ⬇ CSV
               </button>
             </div>
           </div>
@@ -242,9 +254,10 @@ export function CommandPanel() {
               {(['8h', '12h', '24h'] as const).map((r) => (
                 <button
                   key={r}
+                  onClick={() => setHandoverPeriod(r)}
                   className={[
                     'py-[3px] px-[10px] border border-border-color rounded cursor-pointer text-[10px]',
-                    r === '12h' ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
+                    r === handoverPeriod ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
                   ].join(' ')}
                 >
                   Last {r}
@@ -266,7 +279,10 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={() => printHandoverReport({ nodes, totalAlerts, notes: handoverNotes, period: handoverPeriod, operator: user?.displayName ?? 'Operator' })}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ✍ Sign &amp; Export PDF
               </button>
             </div>
