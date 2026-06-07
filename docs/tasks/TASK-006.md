@@ -1,6 +1,6 @@
 # TASK-006: Geofence Zone Editor
 
-## Status: TODO
+## Status: DONE
 
 ## Description
 Allow operators to draw and manage geofence zones directly on the Tactical Map. Currently the Personnel & NavIC panel tracks personnel vs zones but zones cannot be created/edited.
