@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
 import { useRuleEvaluator } from '@/hooks/useRuleEvaluator'
+import { useTimelineRecorder } from '@/hooks/useTimelineRecorder'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { TimelineBar } from '@/components/layout/TimelineBar'
 
 export function App() {
   const theme = useSystemStore((s) => s.theme)
@@ -14,6 +16,7 @@ export function App() {
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
   useRuleEvaluator()
+  useTimelineRecorder()
 
   useEffect(() => {
     setReconnectFn(connect)
@@ -47,7 +50,10 @@ export function App() {
           onClick={() => setMobileSidebarOpen(false)}
           aria-hidden="true"
         />
-        <PanelGrid />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+          <PanelGrid />
+          <TimelineBar />
+        </div>
       </div>
     </div>
   )
