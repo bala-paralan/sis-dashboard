@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
+import { useRuleEvaluator } from '@/hooks/useRuleEvaluator'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
@@ -12,6 +13,7 @@ export function App() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+  useRuleEvaluator()
 
   useEffect(() => {
     setReconnectFn(connect)

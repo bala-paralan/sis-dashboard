@@ -1,6 +1,6 @@
 # TASK-007: Custom Alert Rules Builder
 
-## Status: TODO
+## Status: DONE
 
 ## Description
 Add a rules configuration screen where operators can define conditions that trigger alerts (e.g., "if sensor quality < 30% for 10s, create HIGH alert").
