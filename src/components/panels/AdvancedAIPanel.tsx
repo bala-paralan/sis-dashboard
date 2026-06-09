@@ -1,7 +1,39 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useAlertStore } from '@/store/alertStore'
 import { useSensorStore } from '@/store/sensorStore'
+
+function useToast() {
+  const [toast, setToast] = useState<string | null>(null)
+  const show = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
+  return { toast, show }
+}
+
+function exportSvgAsPng(svgEl: SVGSVGElement, filename: string) {
+  const serializer = new XMLSerializer()
+  const svgStr = serializer.serializeToString(svgEl)
+  const blob = new Blob([svgStr], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportCsv(rows: string[][], filename: string) {
+  const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 interface HeatCell {
   x: number
@@ -94,7 +126,8 @@ function heatColor(v: number): string {
   return `rgba(239,68,68,${0.4 + v * 0.5})`
 }
 
-function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string }) {
+const Heatmap = forwardRef<SVGSVGElement, { cells: HeatCell[]; timeWindow: string }>(
+function Heatmap({ cells, timeWindow }, ref) {
   const COLS = 10, ROWS = 8
   const cellW = 22, cellH = 18
 
@@ -105,9 +138,11 @@ function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string 
         <span>W ← → E</span>
       </div>
       <svg
+        ref={ref}
         width={COLS * cellW + 40}
         height={ROWS * cellH + 20}
         className="block"
+        style={{ background: '#0f1829' }}
       >
         {/* Y-axis labels */}
         {['N', '', '', '', '', '', '', 'S'].map((l, i) => (
@@ -135,23 +170,42 @@ function Heatmap({ cells, timeWindow }: { cells: HeatCell[]; timeWindow: string 
       </svg>
     </div>
   )
-}
+})
 
 export function AdvancedAIPanel() {
   const [tab, setTab] = useState<'heatmap' | 'falseAlarm' | 'confidence'>('heatmap')
   const [timeWindow, setTimeWindow] = useState<'1h' | '6h' | '24h'>('1h')
+  const [recalibratingLstm, setRecalibratingLstm] = useState(false)
+  const [recalibProgress, setRecalibProgress] = useState(0)
+  const heatmapSvgRef = useRef<SVGSVGElement>(null)
   const alerts = useAlertStore((s) => s.alerts)
   const sensors = useSensorStore((s) => Array.from(s.sensors.keys()).slice(0, 6))
   const heatCells = useHeatmap(timeWindow)
   const falseAlarmRates = useFalseAlarmRates(sensors.length > 0 ? sensors : ['S01', 'S02', 'S03', 'S04', 'S05'])
   const confidenceBuckets = useConfidence()
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const { toast, show: showToast } = useToast()
 
   const showHeatmap    = isVisible('behaviouralPatternHeatmap')
   const showFAR        = isVisible('falseAlarmRateTracker')
   const showConfidence = isVisible('aiModelConfidenceMonitor')
 
   const rejectedCount = useRef(Math.floor(Math.random() * 30 + 10))
+
+  const handleRecalibrate = () => {
+    setRecalibratingLstm(true)
+    setRecalibProgress(0)
+    const start = Date.now()
+    const iv = setInterval(() => {
+      const pct = Math.min(100, Math.round(((Date.now() - start) / 4000) * 100))
+      setRecalibProgress(pct)
+      if (pct >= 100) {
+        clearInterval(iv)
+        setRecalibratingLstm(false)
+        showToast('LSTM model recalibrated successfully')
+      }
+    }, 200)
+  }
 
   const avgFAR = Object.values(falseAlarmRates).reduce((s, v) => s + v, 0) / Math.max(1, Object.keys(falseAlarmRates).length)
   const maxBucket = Math.max(...confidenceBuckets.flatMap((b) => [b.yolo, b.lstm, b.rf]))
@@ -163,7 +217,12 @@ export function AdvancedAIPanel() {
   ] as { id: typeof tab; label: string }[]
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-[rgba(0,0,0,0.85)] border border-border-color rounded-lg px-4 py-2 text-[11px] text-text-primary shadow-lg whitespace-nowrap">
+          {toast}
+        </div>
+      )}
       {/* Stats bar */}
       <div className="py-1 px-[10px] border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span className="text-text-secondary">
@@ -218,11 +277,19 @@ export function AdvancedAIPanel() {
                   {w}
                 </button>
               ))}
-              <button className="ml-auto py-[2px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={() => {
+                  if (heatmapSvgRef.current) {
+                    exportSvgAsPng(heatmapSvgRef.current, `heatmap-${timeWindow}-${new Date().toISOString().slice(0, 10)}.svg`)
+                    showToast('Heatmap exported')
+                  }
+                }}
+                className="ml-auto py-[2px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 ⬇ Export PNG
               </button>
             </div>
-            <Heatmap cells={heatCells} timeWindow={timeWindow} />
+            <Heatmap ref={heatmapSvgRef} cells={heatCells} timeWindow={timeWindow} />
 
             {/* High-activity zones */}
             <div className="mt-[10px]">
@@ -289,7 +356,17 @@ export function AdvancedAIPanel() {
               <button className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📄 Rejected Alerts Log
               </button>
-              <button className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={() => {
+                  const rows: string[][] = [['Sensor', 'FAR %', 'Status', 'Timestamp']]
+                  Object.entries(falseAlarmRates).forEach(([id, rate]) => {
+                    rows.push([id, (rate * 100).toFixed(2), rate > 0.2 ? 'HIGH' : rate > 0.1 ? 'ELEVATED' : 'OK', new Date().toISOString()])
+                  })
+                  exportCsv(rows, `far-audit-${new Date().toISOString().slice(0, 10)}.csv`)
+                  showToast('Audit CSV downloaded')
+                }}
+                className="flex-1 py-[5px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 ⬇ Export Audit CSV
               </button>
             </div>
@@ -372,8 +449,12 @@ export function AdvancedAIPanel() {
                       {m.ok ? '● OK' : '⚠ DEGRADED'}
                     </span>
                     {!m.ok && (
-                      <button className="py-[2px] px-1.5 bg-[rgba(249,115,22,0.15)] border border-[rgba(249,115,22,0.4)] rounded-[3px] text-alert-medium cursor-pointer text-[9px]">
-                        Recalibrate
+                      <button
+                        onClick={recalibratingLstm ? undefined : handleRecalibrate}
+                        disabled={recalibratingLstm}
+                        className="py-[2px] px-1.5 bg-[rgba(249,115,22,0.15)] border border-[rgba(249,115,22,0.4)] rounded-[3px] text-alert-medium cursor-pointer text-[9px] min-w-[80px]"
+                      >
+                        {recalibratingLstm ? `${recalibProgress}%…` : 'Recalibrate'}
                       </button>
                     )}
                   </div>

@@ -184,11 +184,92 @@ function MiniMap({ personnel }: { personnel: Personnel[] }) {
   )
 }
 
+type BroadcastSeverity = 'ROUTINE' | 'URGENT' | 'EMERGENCY'
+
+function EmergencyBroadcastModal({ onClose }: { onClose: () => void }) {
+  const [severity, setSeverity] = useState<BroadcastSeverity>('EMERGENCY')
+  const [message, setMessage] = useState('All units: report to defensive positions immediately. Confirm receipt.')
+  const [sent, setSent] = useState(false)
+
+  const severityColor: Record<BroadcastSeverity, string> = {
+    ROUTINE: 'var(--sensor-acoustic)',
+    URGENT: 'var(--alert-medium)',
+    EMERGENCY: 'var(--alert-critical)',
+  }
+
+  if (sent) {
+    return (
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.6)]">
+        <div className="bg-bg-secondary border border-sensor-acoustic rounded-lg p-4 max-w-[280px] text-center shadow-2xl">
+          <div className="text-sensor-acoustic font-bold text-[14px] mb-2">✓ Broadcast Sent</div>
+          <div className="text-[11px] text-text-secondary mb-4">
+            [{severity}] message transmitted to all {5} personnel units.
+          </div>
+          <button onClick={onClose} className="py-1.5 px-6 bg-bg-tertiary border border-border-color rounded text-text-primary cursor-pointer text-[11px]">
+            Close
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.6)]">
+      <div className="bg-bg-secondary border border-border-color rounded-lg p-4 w-[280px] shadow-2xl">
+        <div className="text-[13px] font-bold mb-3" style={{ color: severityColor[severity] }}>
+          🚨 Emergency Broadcast
+        </div>
+
+        {/* Severity selector */}
+        <div className="flex gap-1 mb-3">
+          {(['ROUTINE', 'URGENT', 'EMERGENCY'] as BroadcastSeverity[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSeverity(s)}
+              className="flex-1 py-1 rounded cursor-pointer text-[9px] font-bold tracking-[0.05em]"
+              style={{
+                background: severity === s ? `${severityColor[s]}22` : 'var(--bg-tertiary)',
+                border: `1px solid ${severity === s ? severityColor[s] : 'var(--border-color)'}`,
+                color: severity === s ? severityColor[s] : 'var(--text-secondary)',
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          className="w-full bg-bg-primary border border-border-color rounded-md text-text-primary text-[11px] p-2 resize-none h-[80px] mb-3 font-[inherit] box-border"
+        />
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSent(true)}
+            className="flex-1 py-1.5 rounded font-bold cursor-pointer text-[11px] text-white border-none"
+            style={{ background: severityColor[severity] }}
+          >
+            Broadcast
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function PersonnelPanel() {
   const personnel = usePersonnel()
   const gprEvents = useGPREvents()
   const madReadings = useMAD()
   const [tab, setTab] = useState<'personnel' | 'gpr' | 'mad'>('personnel')
+  const [broadcastOpen, setBroadcastOpen] = useState(false)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showNavic = isVisible('navicGpsBoard')
@@ -207,7 +288,9 @@ export function PersonnelPanel() {
   ] as { id: typeof tab; label: string }[]
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {broadcastOpen && <EmergencyBroadcastModal onClose={() => setBroadcastOpen(false)} />}
+
       {/* Stats bar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span className="text-text-secondary">
@@ -224,7 +307,10 @@ export function PersonnelPanel() {
           </span>
         )}
         {showEmergency && (
-          <button className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold">
+          <button
+            onClick={() => setBroadcastOpen(true)}
+            className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
+          >
             🚨 Emergency Broadcast
           </button>
         )}

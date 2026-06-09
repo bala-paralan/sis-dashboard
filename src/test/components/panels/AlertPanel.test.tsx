@@ -22,7 +22,7 @@ beforeEach(() => {
   useAlertStore.setState({
     alerts: [],
     threatAssessment: null,
-    filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED' },
+    filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED', timeRange: 'ALL' },
   })
 })
 
@@ -43,7 +43,7 @@ describe('AlertPanel', () => {
         mockAlert('a1', 'HIGH'),
         mockAlert('a2', 'LOW'),
       ],
-      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
     // Each alert renders its classification text
@@ -52,7 +52,8 @@ describe('AlertPanel', () => {
 
   it('filter chips are visible (ALL, CRITICAL, HIGH, MEDIUM, LOW)', () => {
     render(<AlertPanel />)
-    expect(screen.getByRole('button', { name: 'ALL' })).toBeInTheDocument()
+    // Multiple 'ALL' buttons exist (threat level and time range); ensure at least one is present
+    expect(screen.getAllByRole('button', { name: 'ALL' }).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByRole('button', { name: 'CRITICAL' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'HIGH' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MEDIUM' })).toBeInTheDocument()
@@ -65,7 +66,7 @@ describe('AlertPanel', () => {
         mockAlert('c1', 'CRITICAL'),
         mockAlert('h1', 'HIGH'),
       ],
-      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
 
@@ -84,12 +85,13 @@ describe('AlertPanel', () => {
         mockAlert('h1', 'HIGH'),
         mockAlert('m1', 'MEDIUM'),
       ],
-      filter: { threatLevel: 'CRITICAL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'CRITICAL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
 
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'ALL' }))
+      // First 'ALL' button is the threat-level chip
+      fireEvent.click(screen.getAllByRole('button', { name: 'ALL' })[0])
     })
     expect(screen.getByText('3 shown')).toBeInTheDocument()
   })
@@ -112,7 +114,7 @@ describe('AlertPanel', () => {
   it('alert description text is visible in the list', () => {
     useAlertStore.setState({
       alerts: [mockAlert('d1', 'MEDIUM')],
-      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
     expect(screen.getByText('Alert d1 description')).toBeInTheDocument()
@@ -126,7 +128,7 @@ describe('AlertPanel', () => {
     const alerts = levels.map((lvl, i) => mockAlert(`id-${i}`, lvl))
     useAlertStore.setState({
       alerts,
-      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     expect(() => render(<AlertPanel />)).not.toThrow()
     expect(screen.getByText('10 shown')).toBeInTheDocument()
@@ -138,7 +140,7 @@ describe('AlertPanel', () => {
         mockAlert('crit1', 'CRITICAL'),
         mockAlert('low1', 'LOW'),
       ],
-      filter: { threatLevel: 'CRITICAL', sensorFamily: 'ALL', acknowledged: 'ALL' },
+      filter: { threatLevel: 'CRITICAL', sensorFamily: 'ALL', acknowledged: 'ALL', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
     expect(screen.getByText('Alert crit1 description')).toBeInTheDocument()
@@ -151,7 +153,7 @@ describe('AlertPanel', () => {
         mockAlert('u1', 'HIGH', false),
         mockAlert('a1', 'HIGH', true),
       ],
-      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED' },
+      filter: { threatLevel: 'ALL', sensorFamily: 'ALL', acknowledged: 'UNACKED', timeRange: 'ALL' },
     })
     render(<AlertPanel />)
     expect(screen.getByText('Alert u1 description')).toBeInTheDocument()

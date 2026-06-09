@@ -13,6 +13,8 @@ const THREAT_LEVELS: (ThreatLevel | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDI
 const FAMILIES: (SensorFamily | 'ALL')[] = [
   'ALL', 'Seismic', 'Acoustic', 'Optical', 'Radar', 'Magnetic', 'Chemical',
 ]
+const TIME_RANGES = ['1h', '6h', '24h', 'ALL'] as const
+type TimeRange = typeof TIME_RANGES[number]
 
 const LEVEL_COLORS: Record<string, string> = {
   CRITICAL: 'var(--alert-critical)',
@@ -190,6 +192,27 @@ export function AlertPanel() {
           <option value="UNACKED">Unacknowledged</option>
           <option value="ACKED">Acknowledged</option>
         </select>
+
+        {/* Time range chips */}
+        <div className="flex gap-1 flex-wrap">
+          {TIME_RANGES.map((tr) => {
+            const active = filter.timeRange === tr
+            return (
+              <button
+                key={tr}
+                onClick={() => setFilter({ timeRange: tr as TimeRange })}
+                className="text-[10px] font-bold px-[10px] h-7 rounded-full cursor-pointer tracking-[0.05em] transition-all duration-150 inline-flex items-center"
+                style={{
+                  border: `1px solid ${active ? 'var(--accent-blue)' : 'var(--border-color)'}`,
+                  background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
+                  color: active ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                }}
+              >
+                {tr}
+              </button>
+            )
+          })}
+        </div>
 
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown

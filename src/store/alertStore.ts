@@ -7,6 +7,7 @@ interface AlertFilter {
   threatLevel: ThreatLevel | 'ALL'
   sensorFamily: SensorFamily | 'ALL'
   acknowledged: 'ALL' | 'UNACKED' | 'ACKED'
+  timeRange: '1h' | '6h' | '24h' | 'ALL'
 }
 
 interface AlertState {
@@ -27,6 +28,7 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
     threatLevel: 'ALL',
     sensorFamily: 'ALL',
     acknowledged: 'UNACKED',
+    timeRange: 'ALL',
   },
 
   addAlert: (alert: Alert) => {
@@ -54,6 +56,8 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
 
   filteredAlerts: () => {
     const { alerts, filter } = get()
+    const now = Date.now()
+    const timeRangeMs: Record<string, number> = { '1h': 3600000, '6h': 21600000, '24h': 86400000 }
     return alerts.filter((alert) => {
       if (filter.threatLevel !== 'ALL' && alert.threat_level !== filter.threatLevel) {
         return false
@@ -66,6 +70,10 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
       }
       if (filter.acknowledged === 'ACKED' && !alert.acknowledged) {
         return false
+      }
+      if (filter.timeRange !== 'ALL') {
+        const cutoff = now - timeRangeMs[filter.timeRange]
+        if (new Date(alert.timestamp).getTime() < cutoff) return false
       }
       return true
     })

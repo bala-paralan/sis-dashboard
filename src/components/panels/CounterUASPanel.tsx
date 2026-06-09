@@ -1,6 +1,34 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 
+interface EngagementLog {
+  id: string
+  contactId: string
+  ts: number
+  action: string
+}
+
+function useToast() {
+  const [toast, setToast] = useState<string | null>(null)
+  const show = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+  return { toast, show }
+}
+
+function buildKML(points: { id: string; bearing: number; ts: number }[]): string {
+  const placemarks = points
+    .map(
+      (p) =>
+        `    <Placemark><name>${p.id} ${p.bearing.toFixed(0)}°</name>` +
+        `<TimeStamp><when>${new Date(p.ts).toISOString()}</when></TimeStamp>` +
+        `<Point><coordinates>0,0,0</coordinates></Point></Placemark>`
+    )
+    .join('\n')
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n${placemarks}\n</Document>\n</kml>`
+}
+
 interface DroneContact {
   id: string
   bearing_deg: number
@@ -113,6 +141,9 @@ export function CounterUASPanel() {
   const contacts = useDroneContacts()
   const [alarmActive, setAlarmActive] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [engageLogs, setEngageLogs] = useState<EngagementLog[]>([])
+  const [confirmContact, setConfirmContact] = useState<string | null>(null)
+  const { toast, show: showToast } = useToast()
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showThreatDisplay = isVisible('counterUasThreatDisplay')
@@ -126,7 +157,47 @@ export function CounterUASPanel() {
   }, [contacts])
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {/* Toast */}
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-[rgba(0,0,0,0.85)] border border-border-color rounded-lg px-4 py-2 text-[11px] text-text-primary shadow-lg whitespace-nowrap">
+          {toast}
+        </div>
+      )}
+
+      {/* Engage QRT confirm dialog */}
+      {confirmContact && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.6)]">
+          <div className="bg-bg-secondary border border-alert-critical rounded-lg p-4 max-w-[240px] text-center shadow-2xl">
+            <div className="text-alert-critical font-bold text-[13px] mb-2">⚡ ENGAGE QRT</div>
+            <div className="text-[11px] text-text-secondary mb-4">
+              Dispatch Quick Reaction Team for UAS-{confirmContact}?<br />This action will be logged.
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEngageLogs((prev) => [
+                    { id: Math.random().toString(36).slice(2, 8).toUpperCase(), contactId: confirmContact, ts: Date.now(), action: 'QRT_ENGAGED' },
+                    ...prev,
+                  ].slice(0, 50))
+                  showToast(`QRT engaged for UAS-${confirmContact}`)
+                  setConfirmContact(null)
+                }}
+                className="flex-1 py-1.5 bg-alert-critical border-none rounded text-white cursor-pointer text-[11px] font-bold"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmContact(null)}
+                className="flex-1 py-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[11px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span
@@ -155,6 +226,12 @@ export function CounterUASPanel() {
           {alarmActive ? '🔔 ALARM ON' : '🔕 Alarm Off'}
         </button>
         <button
+          onClick={() => {
+            const summary = contacts.length > 0
+              ? contacts.map((c) => `UAS-${c.id} ${c.bearing_deg}° ${c.range_m}m`).join(', ')
+              : 'No active contacts'
+            showToast(`QRT notified — ${summary}`)
+          }}
           className="px-2 py-0.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
         >
           ⚡ Notify QRT
@@ -236,11 +313,20 @@ export function CounterUASPanel() {
                       {selectedId === c.id && (
                         <div className="mt-2 flex gap-1.5">
                           <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmContact(c.id) }}
                             className="flex-1 py-1 px-1.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-semibold"
                           >
                             ⚡ Engage QRT
                           </button>
                           <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEngageLogs((prev) => [
+                                { id: Math.random().toString(36).slice(2, 8).toUpperCase(), contactId: c.id, ts: Date.now(), action: 'LOGGED' },
+                                ...prev,
+                              ].slice(0, 50))
+                              showToast(`Engagement logged for UAS-${c.id}`)
+                            }}
                             className="flex-1 py-1 px-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                           >
                             📝 Log Engagement
@@ -252,6 +338,24 @@ export function CounterUASPanel() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Engagement Log */}
+        {engageLogs.length > 0 && (
+          <div className="px-[10px] pb-[10px]">
+            <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-2">
+              📋 Engagement Log ({engageLogs.length})
+            </div>
+            <div className="flex flex-col gap-[3px] max-h-[80px] overflow-y-auto">
+              {engageLogs.map((log) => (
+                <div key={log.id} className="flex justify-between text-[10px] text-text-secondary py-0.5 border-b border-[rgba(255,255,255,0.04)]">
+                  <span className="font-mono text-alert-medium">UAS-{log.contactId}</span>
+                  <span style={{ color: log.action === 'QRT_ENGAGED' ? 'var(--alert-critical)' : 'var(--text-secondary)' }}>{log.action}</span>
+                  <span>{new Date(log.ts).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -276,6 +380,17 @@ export function CounterUASPanel() {
                   </button>
                 ))}
                 <button
+                  onClick={() => {
+                    const kml = buildKML(historyRef.current)
+                    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `uas-tracks-${new Date().toISOString().slice(0, 16)}.kml`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    showToast('KML downloaded')
+                  }}
                   className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                 >
                   ⬇ Export KML

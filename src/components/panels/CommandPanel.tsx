@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 
+function useToast() {
+  const [toast, setToast] = useState<string | null>(null)
+  const show = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+  return { toast, show }
+}
+
+function printReport(header: string, body: string) {
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(`
+    <html><head><title>IINVSYS SIS Report</title>
+    <style>body{font-family:monospace;padding:24px;color:#000}h2{margin-bottom:8px}pre{white-space:pre-wrap;font-size:12px}</style>
+    </head><body><h2>${header}</h2><pre>${body}</pre></body></html>
+  `)
+  win.document.close()
+  win.print()
+}
+
 interface NodeStatus {
   id: string
   location: string
@@ -95,6 +116,9 @@ export function CommandPanel() {
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
+  const [handoverRange, setHandoverRange] = useState<'8h' | '12h' | '24h'>('12h')
+  const [resyncing, setResyncing] = useState(false)
+  const { toast, show: showToast } = useToast()
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const showNodes    = isVisible('multiNodeOverview')
@@ -120,8 +144,18 @@ export function CommandPanel() {
     ...(showHandover ? [{ id: 'handover', label: '📝 Handover' }] : []),
   ] as { id: typeof tab; label: string }[]
 
+  const handleResync = () => {
+    setResyncing(true)
+    setTimeout(() => { setResyncing(false); showToast('CIBMS feed synced') }, 1500)
+  }
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-[rgba(0,0,0,0.85)] border border-border-color rounded-lg px-4 py-2 text-[11px] text-text-primary shadow-lg whitespace-nowrap">
+          {toast}
+        </div>
+      )}
       {/* Stats bar */}
       <div className="py-1 px-[10px] border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span className="text-text-secondary">
@@ -192,8 +226,12 @@ export function CommandPanel() {
                   <span>Schema: <strong className="text-sensor-acoustic">COMPLIANT</strong></span>
                 </div>
                 <div className="flex gap-1.5 mt-1.5">
-                  <button className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[9px]">
-                    ↺ Resync
+                  <button
+                    onClick={handleResync}
+                    disabled={resyncing}
+                    className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[9px]"
+                  >
+                    {resyncing ? '↻ Resyncing…' : '↺ Resync'}
                   </button>
                   <span className="text-[10px] text-text-secondary leading-5">STANAG 4607/4609</span>
                 </div>
@@ -222,10 +260,20 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={() => {
+                  const header = `INCIDENT REPORT — ${new Date().toLocaleString()}`
+                  const body = `Node: BOP-ALPHA-01 | Operator: Operator\nActive alerts: ${totalAlerts} | Nodes online: ${nodes.filter((n) => n.status === 'ONLINE').length}/${nodes.length}\nThreat level: ${nodes.some((n) => n.threatLevel === 'HIGH') ? 'HIGH' : 'CLEAR/LOW'}\n\nNarrative:\n${incidentText || '(none)'}`
+                  printReport(header, body)
+                }}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ⬇ Export PDF → BHQN
               </button>
-              <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
+              <button
+                onClick={() => showToast('Snapshot attached (demo)')}
+                className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
                 📎 Attach Snapshot
               </button>
             </div>
@@ -242,9 +290,10 @@ export function CommandPanel() {
               {(['8h', '12h', '24h'] as const).map((r) => (
                 <button
                   key={r}
+                  onClick={() => setHandoverRange(r)}
                   className={[
                     'py-[3px] px-[10px] border border-border-color rounded cursor-pointer text-[10px]',
-                    r === '12h' ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
+                    r === handoverRange ? 'bg-accent-blue text-white' : 'bg-bg-tertiary text-text-secondary',
                   ].join(' ')}
                 >
                   Last {r}
@@ -266,7 +315,15 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={() => {
+                  const now = new Date()
+                  const header = `SHIFT HANDOVER — Last ${handoverRange} — Signed by Operator at ${now.toLocaleString()}`
+                  const body = `Total alerts: ${totalAlerts + 12} | Sensor faults: 2\nTracks: 7 | UAS contacts: 1 | GPR anomalies: 3\n\nHandover Notes:\n${handoverNotes || '(none)'}`
+                  printReport(header, body)
+                }}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ✍ Sign &amp; Export PDF
               </button>
             </div>
