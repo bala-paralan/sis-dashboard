@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
 import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -26,6 +27,8 @@ export function TopNavBar() {
   const user = useAuthStore((s) => s.user)
   const authLogout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
+  const unreadNotifs = useNotificationStore((s) => s.unreadCount)
+  const setNotifDrawer = useNotificationStore((s) => s.setDrawerOpen)
 
   const handleLogout = async () => {
     await authLogout()
@@ -117,6 +120,20 @@ export function TopNavBar() {
           </span>
         </div>
       )}
+
+      {/* Notification bell */}
+      <button
+        onClick={() => setNotifDrawer(true)}
+        className="relative w-[34px] h-[34px] rounded-[6px] border border-border-color bg-bg-tertiary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
+        aria-label="Open notifications"
+      >
+        <span className="text-[16px]">🔔</span>
+        {unreadNotifs > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-alert-critical text-white text-[9px] font-bold flex items-center justify-center leading-none">
+            {unreadNotifs > 99 ? '99+' : unreadNotifs}
+          </span>
+        )}
+      </button>
 
       {/* Theme toggle */}
       <ThemeToggle />

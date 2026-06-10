@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import type { Alert } from '@/types/sensors'
+import { useAuthStore } from '@/store/authStore'
 
 function mockAlert(overrides = {}): Alert {
   return {
@@ -23,6 +24,8 @@ describe('AlertRow', () => {
 
   beforeEach(() => {
     onAck = vi.fn()
+    // Set OPERATOR role so ACK button is visible
+    useAuthStore.setState({ user: { id: 'u1', email: 'op@test.com', displayName: 'Operator', role: 'OPERATOR' } })
   })
 
   it('renders without crashing', () => {
