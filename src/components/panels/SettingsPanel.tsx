@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import type { LayoutPreset } from '@/store/settingsStore'
 import { useSystemStore } from '@/store/systemStore'
 import { useViewStore } from '@/store/viewStore'
 
@@ -23,7 +24,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Interoperability':           '🔗',
 }
 
-type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds'
+type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds' | 'presets'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -43,6 +44,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 export function SettingsPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('widgets')
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+  const [presetName, setPresetName] = useState('')
+  const importRef = useRef<HTMLInputElement>(null)
 
   const widgetsByCategory = useSettingsStore((s) => s.widgetsByCategory())
   const toggleWidget = useSettingsStore((s) => s.toggleWidget)
@@ -58,6 +61,12 @@ export function SettingsPanel() {
   const setDefaultExpandedPanel = useSettingsStore((s) => s.setDefaultExpandedPanel)
   const toggleExpand            = useViewStore((s) => s.toggleExpand)
   const setPanelView            = useViewStore((s) => s.setPanelView)
+  const presets                 = useSettingsStore((s) => s.presets)
+  const savePreset              = useSettingsStore((s) => s.savePreset)
+  const loadPreset              = useSettingsStore((s) => s.loadPreset)
+  const deletePreset            = useSettingsStore((s) => s.deletePreset)
+  const exportPreset            = useSettingsStore((s) => s.exportPreset)
+  const importPreset            = useSettingsStore((s) => s.importPreset)
   const expandedPanel           = useViewStore((s) => s.expandedPanel)
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -66,6 +75,7 @@ export function SettingsPanel() {
     { id: 'display',    label: 'Display',    icon: '🎨' },
     { id: 'layout',     label: 'Layout',     icon: '⤢' },
     { id: 'thresholds', label: 'Thresholds', icon: '⚡' },
+    { id: 'presets',    label: 'Presets',    icon: '💾' },
   ]
 
   const PANEL_LABELS: Record<string, { label: string; icon: string; isNew?: boolean }> = {
@@ -434,6 +444,107 @@ export function SettingsPanel() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* ── PRESETS TAB ── */}
+        {activeTab === 'presets' && (
+          <div className="flex flex-col gap-4">
+            <div className="text-[11px] text-text-secondary leading-relaxed">
+              Save named layout presets (panel visibility + widget config). Up to 5 presets. Export/import as JSON files.
+            </div>
+
+            {/* Save preset */}
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-3">
+              <div className="text-[11px] font-bold mb-2">Save Current Layout</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Preset name…"
+                  className="flex-1 py-[5px] px-2 bg-bg-tertiary border border-border-color rounded text-[11px] text-text-primary"
+                  maxLength={30}
+                />
+                <button
+                  disabled={!presetName.trim() || presets.length >= 5}
+                  onClick={() => { savePreset(presetName.trim()); setPresetName('') }}
+                  className="py-[5px] px-3 bg-accent-blue border-none rounded text-white text-[11px] font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+              {presets.length >= 5 && (
+                <p className="text-[10px] text-alert-medium mt-1">Max 5 presets reached. Delete one to save a new preset.</p>
+              )}
+            </div>
+
+            {/* Saved presets list */}
+            {presets.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.1em]">Saved Presets</div>
+                {presets.map((p) => (
+                  <div key={p.name} className="bg-bg-secondary border border-border-color rounded-lg px-3 py-2 flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-semibold truncate">{p.name}</div>
+                      <div className="text-[10px] text-text-muted">{new Date(p.createdAt).toLocaleString()}</div>
+                    </div>
+                    <button
+                      onClick={() => loadPreset(p.name)}
+                      className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-[10px] text-text-secondary cursor-pointer hover:text-text-primary"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => exportPreset(p.name)}
+                      className="py-[3px] px-2 bg-bg-tertiary border border-border-color rounded text-[10px] text-text-secondary cursor-pointer hover:text-text-primary"
+                      title="Export as JSON"
+                    >
+                      ⬇
+                    </button>
+                    <button
+                      onClick={() => deletePreset(p.name)}
+                      className="py-[3px] px-2 border border-[rgba(239,68,68,0.3)] rounded text-[10px] text-alert-critical bg-transparent cursor-pointer hover:bg-[rgba(239,68,68,0.1)]"
+                      title="Delete preset"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[11px] text-text-muted italic">No saved presets yet.</div>
+            )}
+
+            {/* Import */}
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-3">
+              <div className="text-[11px] font-bold mb-2">Import Preset</div>
+              <input
+                ref={importRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = (ev) => {
+                    try {
+                      const preset = JSON.parse(ev.target?.result as string) as LayoutPreset
+                      if (preset.name && preset.widgets) importPreset(preset)
+                    } catch { /* invalid JSON */ }
+                  }
+                  reader.readAsText(file)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                onClick={() => importRef.current?.click()}
+                className="py-[5px] px-3 bg-bg-tertiary border border-border-color rounded text-[11px] text-text-secondary cursor-pointer hover:text-text-primary"
+              >
+                📂 Import from JSON…
+              </button>
+            </div>
           </div>
         )}
 

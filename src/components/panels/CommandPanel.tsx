@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
+import { RequiresRole } from '@/components/auth/RequiresRole'
+import { useAuthStore } from '@/store/authStore'
 
 interface NodeStatus {
   id: string
@@ -89,6 +92,36 @@ function NodeCard({ node }: { node: NodeStatus }) {
 
 const textareaClass = 'w-full bg-bg-secondary border border-border-color rounded-md text-text-primary text-[11px] p-2 resize-y font-[inherit] box-border'
 
+function exportIncidentReport(nodes: NodeStatus[], totalAlerts: number, user: string, narrative: string) {
+  const now = new Date()
+  const lines = [
+    '===== IINVSYS SIS — INCIDENT REPORT =====',
+    `Generated: ${now.toLocaleString()}`,
+    `Operator: ${user}`,
+    '',
+    '--- NODE STATUS ---',
+    ...nodes.map((n) => `${n.id} | ${n.status} | Threat: ${n.threatLevel} | Alerts: ${n.alerts} | Health: ${Math.round(n.health)}%`),
+    '',
+    '--- SUMMARY ---',
+    `Total active alerts: ${totalAlerts}`,
+    `Nodes online: ${nodes.filter((n) => n.status === 'ONLINE').length}/${nodes.length}`,
+    `Degraded: ${nodes.filter((n) => n.status === 'DEGRADED').length}`,
+    `Offline: ${nodes.filter((n) => n.status === 'OFFLINE').length}`,
+    '',
+    '--- NARRATIVE ---',
+    narrative || '(no narrative provided)',
+    '',
+    '==========================================',
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `sis-incident-${now.toISOString().slice(0, 19).replace(/:/g, '-')}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function CommandPanel() {
   const nodes = useNodes()
   const [tab, setTab] = useState<'nodes' | 'incident' | 'handover'>('nodes')
@@ -96,13 +129,15 @@ export function CommandPanel() {
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const allAlerts = useAlertStore((s) => s.alerts)
+  const user = useAuthStore((s) => s.user)
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
   const showHandover = isVisible('shiftHandoverSummary')
   const showCibms    = isVisible('cibmsNatgridFeedMonitor')
 
-  const totalAlerts  = nodes.reduce((s, n) => s + n.alerts, 0)
+  const totalAlerts  = nodes.reduce((s, n) => s + n.alerts, 0) + allAlerts.filter((a) => !a.acknowledged).length
   const offlineCount = nodes.filter((n) => n.status === 'OFFLINE').length
 
   const sorted = [...nodes].sort((a, b) => {
@@ -222,9 +257,14 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
-                ⬇ Export PDF → BHQN
-              </button>
+              <RequiresRole role="OPERATOR">
+                <button
+                  onClick={() => exportIncidentReport(nodes, totalAlerts, user?.displayName ?? user?.email ?? 'Operator', incidentText)}
+                  className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+                >
+                  ⬇ Export Report (.txt)
+                </button>
+              </RequiresRole>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot
               </button>

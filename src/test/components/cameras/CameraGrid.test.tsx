@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { CameraGrid } from '@/components/cameras/CameraGrid'
 import { useCameraStore } from '@/store/cameraStore'
+import { useAuthStore } from '@/store/authStore'
 
 vi.mock('@/api/cameras', () => ({
   fetchCameras: vi.fn().mockResolvedValue({ cameras: [], total: 0, page: 1, limit: 24, count: 0 }),
@@ -31,6 +32,8 @@ beforeEach(() => {
     filterStatus: '',
     filterSiteId: '',
   })
+  // Set OPERATOR role so Add/Edit/Delete buttons are visible
+  useAuthStore.setState({ user: { id: 'u1', email: 'op@test.com', displayName: 'Operator', role: 'OPERATOR' } })
 })
 
 describe('CameraGrid', () => {

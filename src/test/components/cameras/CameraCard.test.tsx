@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { CameraCard } from '@/components/cameras/CameraCard'
 import type { Camera } from '@/api/cameras'
+import { useAuthStore } from '@/store/authStore'
 
 function makeCamera(overrides: Partial<Camera> = {}): Camera {
   return {
@@ -29,6 +30,10 @@ const defaultProps = {
 }
 
 describe('CameraCard', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: { id: 'u1', email: 'op@test.com', displayName: 'Operator', role: 'OPERATOR' } })
+  })
+
   it('renders camera name', () => {
     render(<CameraCard camera={makeCamera()} {...defaultProps} />)
     expect(screen.getByText('Gate Camera')).toBeInTheDocument()
