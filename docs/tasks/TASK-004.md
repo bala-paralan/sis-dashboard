@@ -1,6 +1,6 @@
 # TASK-004: Connect Panels to Zustand Stores with Demo-Mode Fallback
 
-## Status: In Progress
+## Status: Completed
 
 ## Goal
 Replace per-panel mock data generators (`useState` + `setInterval`) in CounterUASPanel and
@@ -14,11 +14,11 @@ UI remains usable during development/demonstrations.
 - New `src/components/widgets/DemoModeBanner.tsx` — reusable banner component
 
 ## Acceptance Criteria
-- [ ] CounterUASPanel reads live track data from `useSensorStore` when connected
-- [ ] CounterUASPanel shows demo contacts when `connectionStatus !== 'connected'`
-- [ ] PersonnelPanel reads sensor data from `useSensorStore` when available
-- [ ] `DemoModeBanner` is visible across panels when using mock data
-- [ ] All 273 existing tests still pass
+- [x] CounterUASPanel reads live track data from `useSensorStore` when connected
+- [x] CounterUASPanel shows demo contacts when `connectionStatus !== 'connected'`
+- [x] PersonnelPanel reads sensor data from `useSensorStore` when available
+- [x] `DemoModeBanner` is visible across panels when using mock data
+- [x] All 273 existing tests still pass (323 tests total now passing)
 
 ## Implementation Notes
 - `Track` type: `{ track_id, lat, lon, range_m, velocity, heading, class, confidence, age_frames }`

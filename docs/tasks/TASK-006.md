@@ -1,6 +1,6 @@
 # TASK-006: React Router — Protected Routes & Login Page
 
-## Status: In Progress
+## Status: Completed
 
 ## Goal
 Add React Router v6 routing so unauthenticated users are redirected to `/login`.
@@ -15,13 +15,13 @@ auth state in a new `authStore`, and protects the main dashboard route.
 - Update `src/App.tsx` — use `<Routes>` with `/` (protected dashboard) and `/login`
 
 ## Acceptance Criteria
-- [ ] Navigating to `/` when unauthenticated redirects to `/login`
-- [ ] Successful login navigates to `/` dashboard
-- [ ] Failed login shows an inline error message
-- [ ] `authStore` persists auth state to `sessionStorage` (clears on tab close)
-- [ ] Logout button in TopNavBar calls `auth.logout()` and redirects to `/login`
-- [ ] Tests cover ProtectedRoute redirect behaviour and authStore actions
-- [ ] All 273 existing tests still pass
+- [x] Navigating to `/` when unauthenticated redirects to `/login`
+- [x] Successful login navigates to `/` dashboard
+- [x] Failed login shows an inline error message
+- [x] `authStore` persists auth state to `sessionStorage` (clears on tab close)
+- [x] Logout button in TopNavBar calls `auth.logout()` and redirects to `/login`
+- [x] Tests cover ProtectedRoute redirect behaviour and authStore actions
+- [x] All 273 existing tests still pass (323 tests total now passing)
 
 ## Implementation Notes
 - `react-router-dom` is already in `dependencies`

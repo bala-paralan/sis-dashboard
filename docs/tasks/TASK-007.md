@@ -1,6 +1,6 @@
 # TASK-007: Wire Up Action Buttons with WebSocket Commands
 
-## Status: In Progress
+## Status: Completed
 
 ## Goal
 Implement the `onClick` handlers for the stub action buttons in CounterUASPanel and
@@ -19,12 +19,12 @@ confirmation modal.
 - New `src/components/widgets/ActionToast.tsx` — brief success/error toast notification
 
 ## Acceptance Criteria
-- [ ] All 4 buttons have working `onClick` handlers
-- [ ] "Engage QRT" and "Emergency Broadcast" show a confirmation modal before sending
-- [ ] A toast notification appears for 3 seconds after each action
-- [ ] `sendMessage` is called with the correct message structure
-- [ ] Tests cover ConfirmModal open/close/confirm flow
-- [ ] All 273 existing tests still pass
+- [x] All 4 buttons have working `onClick` handlers
+- [x] "Engage QRT" and "Emergency Broadcast" show a confirmation modal before sending
+- [x] A toast notification appears for 3 seconds after each action
+- [x] `sendMessage` is called with the correct message structure
+- [x] Tests cover ConfirmModal open/close/confirm flow
+- [x] All 273 existing tests still pass (323 tests total now passing)
 
 ## Implementation Notes
 - Use `useSystemStore(s => s.sendMessage)` to access the WebSocket send function

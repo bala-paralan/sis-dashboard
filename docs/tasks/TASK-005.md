@@ -1,6 +1,6 @@
 # TASK-005: Implement Export Functionality
 
-## Status: In Progress
+## Status: Completed
 
 ## Goal
 Wire up the "Export" buttons that currently have no `onClick` handlers across multiple panels.
@@ -16,12 +16,12 @@ Implement three export formats:
 - `src/components/panels/CounterUASPanel.tsx` — implement "Export KML" handler
 
 ## Acceptance Criteria
-- [ ] `exportAlertsCSV(alerts)` generates a properly formatted CSV and triggers download
-- [ ] `exportIncidentPDF()` opens browser print dialog with a styled print-specific layout
-- [ ] `exportTracksKML(tracks)` generates a valid KML document and triggers download
-- [ ] All three export functions are covered by unit tests in `src/test/utils/exporters.test.ts`
-- [ ] Export buttons show a brief "Exported!" toast or visual confirmation
-- [ ] All 273 existing tests still pass
+- [x] `exportAlertsCSV(alerts)` generates a properly formatted CSV and triggers download
+- [x] `exportIncidentPDF()` opens browser print dialog with a styled print-specific layout
+- [x] `exportTracksKML(tracks)` generates a valid KML document and triggers download
+- [x] All three export functions are covered by unit tests in `src/test/utils/exporters.test.ts`
+- [x] Export buttons show a brief "Exported!" toast or visual confirmation
+- [x] All 273 existing tests still pass (323 tests total now passing)
 
 ## CSV Format
 ```
