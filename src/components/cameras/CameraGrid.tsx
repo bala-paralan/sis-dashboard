@@ -8,6 +8,7 @@ import type { Camera, CreateCameraInput, CameraStatus } from '@/api/cameras';
 import { CameraCard } from './CameraCard';
 import { CameraFormModal } from './CameraFormModal';
 import { CameraPlayer } from './CameraPlayer';
+import { RequiresRole } from '@/components/auth/RequiresRole';
 
 const STATUSES: Array<CameraStatus | ''> = ['', 'ONLINE', 'OFFLINE', 'DEGRADED', 'ERROR', 'MAINTENANCE'];
 
@@ -72,12 +73,14 @@ export const CameraGrid = () => {
           >
             ↺ Refresh
           </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
-          >
-            + Add Camera
-          </button>
+          <RequiresRole role="OPERATOR">
+            <button
+              onClick={() => setShowAdd(true)}
+              className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + Add Camera
+            </button>
+          </RequiresRole>
         </div>
       </div>
 

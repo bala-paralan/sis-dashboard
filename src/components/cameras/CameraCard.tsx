@@ -1,5 +1,6 @@
 import type { Camera } from '@/api/cameras';
 import { CameraStatusBadge } from './CameraStatusBadge';
+import { RequiresRole } from '@/components/auth/RequiresRole';
 
 interface Props {
   camera:    Camera;
@@ -69,18 +70,20 @@ export const CameraCard = ({ camera, onSelect, onEdit, onDelete, onTest, testRes
       >
         Test
       </button>
-      <button
-        onClick={() => onEdit(camera)}
-        className="rounded border border-white/20 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
-      >
-        Edit
-      </button>
-      <button
-        onClick={() => { if (confirm(`Delete camera "${camera.name}"?`)) onDelete(camera.id); }}
-        className="rounded border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30"
-      >
-        Delete
-      </button>
+      <RequiresRole role="OPERATOR">
+        <button
+          onClick={() => onEdit(camera)}
+          className="rounded border border-white/20 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => { if (confirm(`Delete camera "${camera.name}"?`)) onDelete(camera.id); }}
+          className="rounded border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30"
+        >
+          Delete
+        </button>
+      </RequiresRole>
     </div>
   </div>
 );

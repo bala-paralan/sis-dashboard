@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Alert } from '@/types/sensors'
 import { formatRelativeTime, getThreatLevelColor } from '@/utils/formatters'
+import { RequiresRole } from '@/components/auth/RequiresRole'
 
 interface AlertRowProps {
   alert: Alert
@@ -84,12 +85,14 @@ export function AlertRow({ alert, onAck }: AlertRowProps) {
             {formatRelativeTime(alert.timestamp)}
           </span>
           {!alert.acknowledged ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleAckClick() }}
-              className="btn btn-ghost text-[10px] py-[2px] px-2 rounded"
-            >
-              {showAckInput ? 'Confirm' : 'ACK'}
-            </button>
+            <RequiresRole role="OPERATOR">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAckClick() }}
+                className="btn btn-ghost text-[10px] py-[2px] px-2 rounded"
+              >
+                {showAckInput ? 'Confirm' : 'ACK'}
+              </button>
+            </RequiresRole>
           ) : (
             <span className="text-[10px] text-sensor-acoustic font-semibold">ACKED</span>
           )}
