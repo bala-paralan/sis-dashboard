@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +23,14 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user = useAuthStore((s) => s.user)
+  const authLogout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await authLogout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -111,15 +121,30 @@ export function TopNavBar() {
       {/* Theme toggle */}
       <ThemeToggle />
 
-      {/* User badge */}
-      <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
-        <span
-          className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
-          style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
-        />
-        <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
-        </span>
+      {/* User badge + logout */}
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color">
+          <span
+            className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
+            style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
+          />
+          <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
+            {user ? (user.displayName ?? user.email) : 'Operator'}
+          </span>
+          {user && (
+            <span className="text-[10px] text-text-muted font-medium">
+              {user.role}
+            </span>
+          )}
+        </div>
+        {user && (
+          <button
+            onClick={handleLogout}
+            className="text-[11px] font-semibold text-text-secondary hover:text-text-primary py-1 px-[10px] rounded-[6px] border border-border-color bg-bg-tertiary transition-colors duration-150 shrink-0"
+          >
+            Logout
+          </button>
+        )}
       </div>
     </header>
   )
