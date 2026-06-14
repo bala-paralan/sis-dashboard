@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
+import { logout as apiLogout } from '@/api/auth'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +24,9 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const storeLogout = useAuthStore((s) => s.logout)
+  const user = useAuthStore((s) => s.user)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -28,6 +34,12 @@ export function TopNavBar() {
     }, 1000)
     return () => clearInterval(id)
   }, [])
+
+  const handleLogout = async () => {
+    await apiLogout().catch(() => undefined)
+    storeLogout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header
@@ -118,9 +130,19 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.email ?? 'Operator'}
         </span>
       </div>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="shrink-0 px-2 py-1 rounded-[6px] border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer text-[11px] hover:text-alert-critical hover:border-[rgba(239,68,68,0.4)] transition-colors duration-150"
+        aria-label="Sign out"
+        data-testid="logout-button"
+      >
+        ⏻
+      </button>
     </header>
   )
 }

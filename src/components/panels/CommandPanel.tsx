@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { ActionToast } from '@/components/widgets/ActionToast'
+import { exportIncidentPDF } from '@/utils/exporters'
 
 interface NodeStatus {
   id: string
@@ -96,6 +98,14 @@ export function CommandPanel() {
   const [handoverNotes, setHandoverNotes] = useState('')
   const [sortBy, setSortBy] = useState<'status' | 'threat' | 'alerts'>('status')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const [toast, setToast] = useState<string | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
+
+  const handleExportPDF = () => {
+    exportIncidentPDF()
+    setToast('Print dialog opened')
+    setToastVisible(true)
+  }
 
   const showNodes    = isVisible('multiNodeOverview')
   const showIncident = isVisible('incidentReportGenerator')
@@ -222,7 +232,10 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={handleExportPDF}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ⬇ Export PDF → BHQN
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
@@ -266,13 +279,24 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                onClick={handleExportPDF}
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+              >
                 ✍ Sign &amp; Export PDF
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {toast && (
+        <ActionToast
+          message={toast}
+          visible={toastVisible}
+          onDismiss={() => setToastVisible(false)}
+        />
+      )}
     </div>
   )
 }

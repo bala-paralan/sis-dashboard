@@ -6,6 +6,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { ActionToast } from '@/components/widgets/ActionToast'
+import { exportAlertsCSV } from '@/utils/exporters'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -116,8 +118,17 @@ export function AlertPanel() {
 
   const displayed = useMemo(() => filteredAlerts(), [filteredAlerts, filter, allAlerts])
 
+  const [toast, setToast] = useState<string | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
+
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+  }
+
+  const handleExportCSV = () => {
+    exportAlertsCSV(allAlerts)
+    setToast('Alerts exported as CSV')
+    setToastVisible(true)
   }
 
   const critCount = allAlerts.filter(
@@ -194,6 +205,13 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        <button
+          onClick={handleExportCSV}
+          className="px-2 h-7 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px] hover:border-accent-blue transition-colors duration-150 shrink-0"
+        >
+          ⬇ CSV
+        </button>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
@@ -209,6 +227,14 @@ export function AlertPanel() {
           ))
         )}
       </div>
+
+      {toast && (
+        <ActionToast
+          message={toast}
+          visible={toastVisible}
+          onDismiss={() => setToastVisible(false)}
+        />
+      )}
     </div>
   )
 }

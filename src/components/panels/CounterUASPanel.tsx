@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useSensorStore } from '@/store/sensorStore'
+import { useSystemStore } from '@/store/systemStore'
+import { DemoModeBanner } from '@/components/widgets/DemoModeBanner'
+import { ConfirmModal } from '@/components/widgets/ConfirmModal'
+import { ActionToast } from '@/components/widgets/ActionToast'
+import { exportTracksKML } from '@/utils/exporters'
+import type { Track } from '@/types/sensors'
 
 interface DroneContact {
   id: string
@@ -15,47 +22,67 @@ interface DroneContact {
   velocity_ms: number
 }
 
-function useDroneContacts() {
-  const [contacts, setContacts] = useState<DroneContact[]>([])
+const RF_SIGS = ['2.4 GHz burst', '5.8 GHz FHSS', '900 MHz LR', '433 MHz OOK', 'Encrypted link']
+
+function demoContact(): DroneContact {
+  return {
+    id: Math.random().toString(36).slice(2, 8).toUpperCase(),
+    bearing_deg: Math.round(Math.random() * 360),
+    elevation_deg: Math.round(5 + Math.random() * 60),
+    range_m: Math.round(200 + Math.random() * 1800),
+    rfSignature: RF_SIGS[Math.floor(Math.random() * RF_SIGS.length)],
+    classification: (['COMMERCIAL', 'COMMERCIAL', 'UNKNOWN', 'MILITARY'] as const)[Math.floor(Math.random() * 4)],
+    confidence: Math.round(70 + Math.random() * 29),
+    firstSeen: Date.now() - Math.floor(Math.random() * 120000),
+    lastSeen: Date.now(),
+    altitude_m: Math.round(30 + Math.random() * 400),
+    velocity_ms: parseFloat((1 + Math.random() * 18).toFixed(1)),
+  }
+}
+
+function trackToContact(t: Track): DroneContact {
+  const classMap: Record<Track['class'], DroneContact['classification']> = {
+    HUMAN: 'UNKNOWN',
+    VEHICLE: 'MILITARY',
+    ANIMAL: 'COMMERCIAL',
+    UNKNOWN: 'UNKNOWN',
+  }
+  return {
+    id: t.track_id,
+    bearing_deg: t.heading,
+    elevation_deg: 10,
+    range_m: t.range_m,
+    rfSignature: 'Live track',
+    classification: classMap[t.class],
+    confidence: t.confidence,
+    firstSeen: Date.now() - t.age_frames * 100,
+    lastSeen: Date.now(),
+    altitude_m: 0,
+    velocity_ms: t.velocity,
+  }
+}
+
+function useDroneContacts(isDemo: boolean) {
+  const liveTracks = useSensorStore((s) => s.tracks)
+  const [demoContacts, setDemoContacts] = useState<DroneContact[]>([])
 
   useEffect(() => {
-    const RF_SIGS = ['2.4 GHz burst', '5.8 GHz FHSS', '900 MHz LR', '433 MHz OOK', 'Encrypted link']
-
-    function nextContact(): DroneContact {
-      return {
-        id: Math.random().toString(36).slice(2, 8).toUpperCase(),
-        bearing_deg: Math.round(Math.random() * 360),
-        elevation_deg: Math.round(5 + Math.random() * 60),
-        range_m: Math.round(200 + Math.random() * 1800),
-        rfSignature: RF_SIGS[Math.floor(Math.random() * RF_SIGS.length)],
-        classification: ['COMMERCIAL', 'COMMERCIAL', 'UNKNOWN', 'MILITARY'][Math.floor(Math.random() * 4)] as DroneContact['classification'],
-        confidence: Math.round(70 + Math.random() * 29),
-        firstSeen: Date.now() - Math.floor(Math.random() * 120000),
-        lastSeen: Date.now(),
-        altitude_m: Math.round(30 + Math.random() * 400),
-        velocity_ms: parseFloat((1 + Math.random() * 18).toFixed(1)),
-      }
-    }
-
-    // Start with 0-2 contacts
+    if (!isDemo) return
     const initial = Math.floor(Math.random() * 3)
-    setContacts(Array.from({ length: initial }, nextContact))
+    setDemoContacts(Array.from({ length: initial }, demoContact))
 
     const interval = setInterval(() => {
-      setContacts((prev) => {
-        // Update last-seen for existing
+      setDemoContacts((prev) => {
         let updated = prev.map((c) => ({ ...c, lastSeen: Date.now(), bearing_deg: (c.bearing_deg + (Math.random() * 4 - 2) + 360) % 360 }))
-        // Drop stale (> 60s)
         updated = updated.filter((c) => Date.now() - c.lastSeen < 60000)
-        // Occasionally add new
-        if (Math.random() < 0.15 && updated.length < 4) updated.push(nextContact())
+        if (Math.random() < 0.15 && updated.length < 4) updated.push(demoContact())
         return updated
       })
     }, 2000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isDemo])
 
-  return contacts
+  return isDemo ? demoContacts : liveTracks.map(trackToContact)
 }
 
 const CLASS_COLOR: Record<string, string> = {
@@ -110,23 +137,69 @@ function RFBar({ value, max = 100 }: { value: number; max?: number }) {
 }
 
 export function CounterUASPanel() {
-  const contacts = useDroneContacts()
+  const connectionStatus = useSystemStore((s) => s.connectionStatus)
+  const sendMessage = useSystemStore((s) => s.sendMessage)
+  const isDemo = connectionStatus !== 'connected'
+  const contacts = useDroneContacts(isDemo)
+  const liveTracks = useSensorStore((s) => s.tracks)
+
   const [alarmActive, setAlarmActive] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
 
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingEngageId, setPendingEngageId] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
+
   const showThreatDisplay = isVisible('counterUasThreatDisplay')
   const showPlayback = isVisible('droneTrackPlayback')
 
-  // Track history for playback widget
   const historyRef = useRef<{ id: string; bearing: number; ts: number }[]>([])
   useEffect(() => {
     contacts.forEach((c) => historyRef.current.push({ id: c.id, bearing: c.bearing_deg, ts: c.lastSeen }))
     if (historyRef.current.length > 200) historyRef.current = historyRef.current.slice(-200)
   }, [contacts])
 
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setToastVisible(true)
+  }
+
+  const handleNotifyQRT = (contact: DroneContact) => {
+    sendMessage({ type: 'QRT_NOTIFY', payload: { contact_id: contact.id, threat_level: contact.classification } })
+    showToast('QRT notified')
+  }
+
+  const handleEngageQRT = (contactId: string) => {
+    setPendingEngageId(contactId)
+    setConfirmOpen(true)
+  }
+
+  const confirmEngageQRT = () => {
+    if (pendingEngageId) {
+      sendMessage({ type: 'QRT_ENGAGE', payload: { contact_id: pendingEngageId } })
+      showToast('QRT engagement order sent')
+    }
+    setConfirmOpen(false)
+    setPendingEngageId(null)
+  }
+
+  const handleLogEngagement = (contact: DroneContact) => {
+    sendMessage({ type: 'ENGAGEMENT_LOG', payload: { contact_id: contact.id, timestamp: new Date().toISOString() } })
+    showToast('Engagement logged')
+  }
+
+  const handleExportKML = () => {
+    exportTracksKML(isDemo ? [] : liveTracks)
+    showToast('KML exported')
+  }
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {/* Demo mode banner */}
+      {isDemo && <DemoModeBanner />}
+
       {/* Toolbar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span
@@ -155,6 +228,7 @@ export function CounterUASPanel() {
           {alarmActive ? '🔔 ALARM ON' : '🔕 Alarm Off'}
         </button>
         <button
+          onClick={() => contacts[0] && handleNotifyQRT(contacts[0])}
           className="px-2 py-0.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
         >
           ⚡ Notify QRT
@@ -236,11 +310,13 @@ export function CounterUASPanel() {
                       {selectedId === c.id && (
                         <div className="mt-2 flex gap-1.5">
                           <button
+                            onClick={(e) => { e.stopPropagation(); handleEngageQRT(c.id) }}
                             className="flex-1 py-1 px-1.5 bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.4)] rounded text-alert-critical cursor-pointer text-[10px] font-semibold"
                           >
                             ⚡ Engage QRT
                           </button>
                           <button
+                            onClick={(e) => { e.stopPropagation(); handleLogEngagement(c) }}
                             className="flex-1 py-1 px-1.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                           >
                             📝 Log Engagement
@@ -276,6 +352,7 @@ export function CounterUASPanel() {
                   </button>
                 ))}
                 <button
+                  onClick={handleExportKML}
                   className="px-2 py-0.5 bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
                 >
                   ⬇ Export KML
@@ -297,6 +374,26 @@ export function CounterUASPanel() {
           </div>
         )}
       </div>
+
+      {/* Confirm modal for Engage QRT */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Engage QRT?"
+        message="This will send an QRT_ENGAGE command to deploy the Quick Reaction Team. This action is logged. Confirm?"
+        confirmLabel="Engage QRT"
+        onConfirm={confirmEngageQRT}
+        onCancel={() => { setConfirmOpen(false); setPendingEngageId(null) }}
+      />
+
+      {/* Toast */}
+      {toast && (
+        <ActionToast
+          message={toast.message}
+          type={toast.type}
+          visible={toastVisible}
+          onDismiss={() => setToastVisible(false)}
+        />
+      )}
     </div>
   )
 }

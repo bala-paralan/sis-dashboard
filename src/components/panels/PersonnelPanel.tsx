@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useSystemStore } from '@/store/systemStore'
+import { DemoModeBanner } from '@/components/widgets/DemoModeBanner'
+import { ConfirmModal } from '@/components/widgets/ConfirmModal'
+import { ActionToast } from '@/components/widgets/ActionToast'
 
 interface Personnel {
   id: string
@@ -190,6 +194,13 @@ export function PersonnelPanel() {
   const madReadings = useMAD()
   const [tab, setTab] = useState<'personnel' | 'gpr' | 'mad'>('personnel')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const connectionStatus = useSystemStore((s) => s.connectionStatus)
+  const sendMessage = useSystemStore((s) => s.sendMessage)
+  const isDemo = connectionStatus !== 'connected'
+
+  const [emergencyConfirmOpen, setEmergencyConfirmOpen] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
 
   const showNavic = isVisible('navicGpsBoard')
   const showPersonnel = isVisible('personnelTracker')
@@ -200,6 +211,17 @@ export function PersonnelPanel() {
   const missedCount = personnel.filter((p) => p.status === 'MISSED_CHECKIN').length
   const outsideCount = personnel.filter((p) => p.geofence === 'OUTSIDE').length
 
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setToastVisible(true)
+  }
+
+  const confirmEmergencyBroadcast = () => {
+    sendMessage({ type: 'EMERGENCY_BROADCAST', payload: { message: 'ALL PERSONNEL — EMERGENCY ALERT', timestamp: new Date().toISOString() } })
+    setEmergencyConfirmOpen(false)
+    showToast('Emergency broadcast sent')
+  }
+
   const TABS = [
     ...(showNavic || showPersonnel ? [{ id: 'personnel', label: `👥 Personnel (${personnel.length})` }] : []),
     ...(showGPR ? [{ id: 'gpr', label: `⛏ GPR (${gprEvents.length})` }] : []),
@@ -208,6 +230,9 @@ export function PersonnelPanel() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {/* Demo mode banner */}
+      {isDemo && <DemoModeBanner />}
+
       {/* Stats bar */}
       <div className="px-[10px] py-1 border-b border-border-color bg-bg-secondary flex items-center gap-[10px] shrink-0 text-[10px]">
         <span className="text-text-secondary">
@@ -224,7 +249,10 @@ export function PersonnelPanel() {
           </span>
         )}
         {showEmergency && (
-          <button className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold">
+          <button
+            onClick={() => setEmergencyConfirmOpen(true)}
+            className="ml-auto px-2 py-0.5 bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] rounded text-alert-critical cursor-pointer text-[10px] font-bold"
+          >
             🚨 Emergency Broadcast
           </button>
         )}
@@ -363,6 +391,26 @@ export function PersonnelPanel() {
           </div>
         )}
       </div>
+
+      {/* Emergency broadcast confirm modal */}
+      <ConfirmModal
+        isOpen={emergencyConfirmOpen}
+        title="Send Emergency Broadcast?"
+        message="This will broadcast an emergency alert to all personnel units. Confirm to proceed."
+        confirmLabel="Send Broadcast"
+        onConfirm={confirmEmergencyBroadcast}
+        onCancel={() => setEmergencyConfirmOpen(false)}
+      />
+
+      {/* Toast */}
+      {toast && (
+        <ActionToast
+          message={toast.message}
+          type={toast.type}
+          visible={toastVisible}
+          onDismiss={() => setToastVisible(false)}
+        />
+      )}
     </div>
   )
 }
