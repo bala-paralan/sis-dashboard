@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +22,8 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -28,6 +31,8 @@ export function TopNavBar() {
     }, 1000)
     return () => clearInterval(id)
   }, [])
+
+  const displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'Operator'
 
   return (
     <header
@@ -68,6 +73,7 @@ export function TopNavBar() {
           <select
             value={site}
             onChange={(e) => setSite(e.target.value)}
+            aria-label="Select site"
             className="text-[12px] font-semibold pl-[10px] pr-6 h-[30px] rounded-[6px] border border-border-color bg-bg-tertiary text-text-primary cursor-pointer appearance-none outline-none"
           >
             {SITES.map((s) => (
@@ -118,8 +124,18 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {displayName}
         </span>
+        {user && (
+          <button
+            onClick={logout}
+            aria-label="Sign out"
+            title="Sign out"
+            className="ml-1 text-[10px] text-text-muted cursor-pointer border-none bg-transparent hover:text-text-primary transition-colors"
+          >
+            ⏻
+          </button>
+        )}
       </div>
     </header>
   )

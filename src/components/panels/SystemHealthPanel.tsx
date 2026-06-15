@@ -1,4 +1,5 @@
 import { useSystemStore } from '@/store/systemStore'
+import { useSettingsStore } from '@/store/settingsStore'
 
 function GaugeBar({
   label,
@@ -89,6 +90,8 @@ function CommLink({
 export function SystemHealthPanel() {
   const health = useSystemStore((s) => s.health)
   const connectionStatus = useSystemStore((s) => s.connectionStatus)
+  const cpuWarnThreshold = useSettingsStore((s) => s.panelSettings.systemHealth.cpuWarnThreshold)
+  const gpuWarnThreshold = useSettingsStore((s) => s.panelSettings.systemHealth.gpuWarnThreshold)
 
   if (!health) {
     return (
@@ -165,8 +168,8 @@ export function SystemHealthPanel() {
         <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-2">
           Hardware
         </div>
-        <GaugeBar label="CPU" value={hardware.cpu_percent} />
-        <GaugeBar label="GPU" value={hardware.gpu_percent} />
+        <GaugeBar label="CPU" value={hardware.cpu_percent} warnAt={cpuWarnThreshold} />
+        <GaugeBar label="GPU" value={hardware.gpu_percent} warnAt={gpuWarnThreshold} />
         <GaugeBar label="RAM" value={hardware.ram_percent} />
         <GaugeBar label="NVMe" value={hardware.nvme_percent} />
 

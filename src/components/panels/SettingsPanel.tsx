@@ -47,6 +47,8 @@ export function SettingsPanel() {
   const widgetsByCategory = useSettingsStore((s) => s.widgetsByCategory())
   const toggleWidget = useSettingsStore((s) => s.toggleWidget)
   const setWidgetOption = useSettingsStore((s) => s.setWidgetOption)
+  const setPanelSetting = useSettingsStore((s) => s.setPanelSetting)
+  const panelSettings = useSettingsStore((s) => s.panelSettings)
   const panels = useSettingsStore((s) => s.panels)
   const togglePanel = useSettingsStore((s) => s.togglePanel)
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults)
@@ -387,7 +389,100 @@ export function SettingsPanel() {
         {activeTab === 'thresholds' && (
           <div className="flex flex-col gap-3">
             <div className="text-[11px] text-text-secondary mb-1 leading-relaxed">
-              Configure alert thresholds and update rates per widget. Higher update rates consume more bandwidth.
+              Configure alert thresholds and update rates per widget and panel. Changes apply live without reload.
+            </div>
+
+            {/* Panel-level settings */}
+            <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-1.5">
+              🔔 Alert Panel
+            </div>
+            <div className="bg-bg-secondary border border-border-color rounded-[6px] px-3 py-[10px] mb-1.5">
+              <div className="text-[11px] font-semibold mb-2">Alert Queue</div>
+              <label className="text-[11px] text-text-secondary flex flex-col gap-1">
+                Max alerts shown
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={10}
+                    max={500}
+                    step={10}
+                    value={panelSettings.alertPanel.maxAlerts}
+                    onChange={(e) => setPanelSetting('alertPanel', 'maxAlerts', Number(e.target.value))}
+                    className="w-32"
+                    aria-label="Max alerts shown"
+                  />
+                  <span className="text-[11px] font-mono text-text-primary w-8">{panelSettings.alertPanel.maxAlerts}</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-1.5">
+              🖥 System Health Panel
+            </div>
+            <div className="bg-bg-secondary border border-border-color rounded-[6px] px-3 py-[10px] mb-1.5">
+              <div className="text-[11px] font-semibold mb-2">Hardware Thresholds</div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[11px] text-text-secondary flex flex-col gap-1">
+                  CPU warn threshold (%)
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={50}
+                      max={99}
+                      step={1}
+                      value={panelSettings.systemHealth.cpuWarnThreshold}
+                      onChange={(e) => setPanelSetting('systemHealth', 'cpuWarnThreshold', Number(e.target.value))}
+                      className="w-32"
+                      aria-label="CPU warn threshold"
+                    />
+                    <span className="text-[11px] font-mono text-text-primary w-8">{panelSettings.systemHealth.cpuWarnThreshold}%</span>
+                  </div>
+                </label>
+                <label className="text-[11px] text-text-secondary flex flex-col gap-1">
+                  GPU warn threshold (%)
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={50}
+                      max={99}
+                      step={1}
+                      value={panelSettings.systemHealth.gpuWarnThreshold}
+                      onChange={(e) => setPanelSetting('systemHealth', 'gpuWarnThreshold', Number(e.target.value))}
+                      className="w-32"
+                      aria-label="GPU warn threshold"
+                    />
+                    <span className="text-[11px] font-mono text-text-primary w-8">{panelSettings.systemHealth.gpuWarnThreshold}%</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-1.5">
+              📡 Sensor Family Panel
+            </div>
+            <div className="bg-bg-secondary border border-border-color rounded-[6px] px-3 py-[10px] mb-1.5">
+              <div className="text-[11px] font-semibold mb-2">Render Rate</div>
+              <label className="text-[11px] text-text-secondary flex flex-col gap-1">
+                Update rate (Hz)
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                    value={panelSettings.sensorFamily.updateRateHz}
+                    onChange={(e) => setPanelSetting('sensorFamily', 'updateRateHz', Number(e.target.value))}
+                    className="w-32"
+                    aria-label="Sensor family update rate"
+                  />
+                  <span className="text-[11px] font-mono text-text-primary w-12">{panelSettings.sensorFamily.updateRateHz.toFixed(1)} Hz</span>
+                </div>
+              </label>
+            </div>
+
+            {/* Per-widget settings */}
+            <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mb-1.5 mt-2">
+              Widget Settings
             </div>
 
             {(['Acoustic & Seismic', 'AI Analytics & Prediction', 'Sensor & System Health', 'Counter-UAS', 'Advanced AI Monitoring'] as const).map((cat) => {

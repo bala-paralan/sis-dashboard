@@ -11,7 +11,32 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pingTimeRef = useRef<number | null>(null)
+  const messageQueueRef = useRef<object[]>([])
   const mountedRef = useRef(true)
+
+  const clearCountdown = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current)
+      countdownTimerRef.current = null
+    }
+    useSystemStore.getState().setReconnectCountdown(null)
+  }
+
+  const startCountdown = (delayMs: number) => {
+    clearCountdown()
+    let remaining = Math.ceil(delayMs / 1000)
+    useSystemStore.getState().setReconnectCountdown(remaining)
+    countdownTimerRef.current = setInterval(() => {
+      remaining -= 1
+      if (remaining <= 0) {
+        clearCountdown()
+      } else {
+        useSystemStore.getState().setReconnectCountdown(remaining)
+      }
+    }, 1000)
+  }
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return
@@ -37,9 +62,16 @@ export function useWebSocket() {
     ws.onopen = () => {
       if (!mountedRef.current) return
       reconnectAttemptRef.current = 0
+      clearCountdown()
       useSystemStore.getState().setConnectionStatus('connected')
-      // Subscribe to all data streams
       ws.send(JSON.stringify({ type: 'SUBSCRIBE', payload: { streams: ['ALL'] } }))
+
+      // Replay queued messages
+      while (messageQueueRef.current.length > 0) {
+        const msg = messageQueueRef.current.shift()!
+        ws.send(JSON.stringify(msg))
+      }
+
     }
 
     ws.onmessage = (event: MessageEvent) => {
@@ -54,6 +86,14 @@ export function useWebSocket() {
       const { type, payload } = msg
 
       switch (type) {
+        case 'PONG': {
+          if (pingTimeRef.current !== null) {
+            const latency = Date.now() - pingTimeRef.current
+            useSystemStore.getState().setLatencyMs(latency)
+            pingTimeRef.current = null
+          }
+          break
+        }
         case 'SENSOR_DATA': {
           useSensorStore.getState().updateSensor(payload as SensorPayload)
           break
@@ -118,6 +158,7 @@ export function useWebSocket() {
     ws.onclose = () => {
       if (!mountedRef.current) return
       useSystemStore.getState().setConnectionStatus('disconnected')
+      useSystemStore.getState().setLatencyMs(null)
       scheduleReconnect()
     }
 
@@ -136,6 +177,7 @@ export function useWebSocket() {
     }
     const delay = BACKOFF_DELAYS[attempt]
     reconnectAttemptRef.current = attempt + 1
+    startCountdown(delay)
     reconnectTimerRef.current = setTimeout(() => {
       if (mountedRef.current) connect()
     }, delay)
@@ -147,9 +189,8 @@ export function useWebSocket() {
 
     return () => {
       mountedRef.current = false
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current)
-      }
+      clearCountdown()
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
       if (wsRef.current) {
         wsRef.current.onclose = null
         wsRef.current.onerror = null
@@ -164,6 +205,9 @@ export function useWebSocket() {
   const sendMessage = useCallback((msg: object) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg))
+    } else {
+      // Queue message for replay on reconnect
+      messageQueueRef.current.push(msg)
     }
   }, [])
 

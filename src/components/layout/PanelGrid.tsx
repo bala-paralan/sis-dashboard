@@ -6,6 +6,46 @@ import { useSettingsStore } from '@/store/settingsStore'
 import { useViewStore } from '@/store/viewStore'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
+function ReconnectBanner() {
+  const connectionStatus = useSystemStore((s) => s.connectionStatus)
+  const reconnectCountdown = useSystemStore((s) => s.reconnectCountdown)
+  const reconnect = useSystemStore((s) => s.reconnect)
+
+  if (connectionStatus === 'connected' || connectionStatus === 'connecting') return null
+
+  return (
+    <div
+      className="flex items-center gap-2 py-[5px] px-3 shrink-0 text-[11px] font-semibold"
+      role="status"
+      aria-live="polite"
+      style={{
+        background: 'rgba(239,68,68,0.12)',
+        border: '1px solid rgba(239,68,68,0.3)',
+        borderRadius: 6,
+        color: 'var(--alert-critical)',
+      }}
+    >
+      <span className="w-2 h-2 rounded-full bg-alert-critical shrink-0" style={{ boxShadow: '0 0 5px var(--alert-critical)' }} />
+      <span>
+        {connectionStatus === 'reconnecting' ? 'Reconnecting…' : 'Connection lost'}
+        {reconnectCountdown !== null && connectionStatus === 'disconnected' ? ` — retrying in ${reconnectCountdown}s` : ''}
+      </span>
+      <button
+        onClick={reconnect}
+        aria-label="Reconnect now"
+        className="ml-1 px-2 h-[20px] rounded cursor-pointer text-[10px] font-bold tracking-[0.04em] inline-flex items-center"
+        style={{
+          border: '1px solid rgba(239,68,68,0.5)',
+          background: 'rgba(239,68,68,0.15)',
+          color: 'var(--alert-critical)',
+        }}
+      >
+        Reconnect Now
+      </button>
+    </div>
+  )
+}
+
 const LiveMapPanel      = lazy(() => import('@/components/panels/LiveMapPanel').then((m) => ({ default: m.LiveMapPanel })))
 const AlertPanel        = lazy(() => import('@/components/panels/AlertPanel').then((m) => ({ default: m.AlertPanel })))
 const VideoPanel        = lazy(() => import('@/components/panels/VideoPanel').then((m) => ({ default: m.VideoPanel })))
@@ -111,9 +151,10 @@ export function PanelGrid() {
   if (activePanel === 'settings') {
     return (
       <main
-        className="flex-1 flex overflow-hidden min-h-0"
-        style={{ padding: isMobile ? 2 : 4 }}
+        className="flex-1 flex flex-col overflow-hidden min-h-0"
+        style={{ padding: isMobile ? 2 : 4, gap: 4 }}
       >
+        <ReconnectBanner />
         <PanelShell panelId="settings" title="Dashboard Settings" icon="⚙" style={{ flex: 1 }}>
           <Suspense fallback={<PanelFallback name="Settings" />}>
             <SettingsPanel />
@@ -126,9 +167,10 @@ export function PanelGrid() {
   if (activePanel === 'cameras') {
     return (
       <main
-        className="flex-1 flex overflow-hidden min-h-0"
-        style={{ padding: isMobile ? 2 : 4 }}
+        className="flex-1 flex flex-col overflow-hidden min-h-0"
+        style={{ padding: isMobile ? 2 : 4, gap: 4 }}
       >
+        <ReconnectBanner />
         <PanelShell panelId="cameras" title="IP Camera Management" icon="📷" style={{ flex: 1, overflow: 'auto' }}>
           <Suspense fallback={<PanelFallback name="Cameras" />}>
             <CameraGrid />
@@ -141,9 +183,10 @@ export function PanelGrid() {
   if (activePanel === 'device') {
     return (
       <main
-        className="flex-1 flex overflow-hidden min-h-0"
-        style={{ padding: isMobile ? 2 : 4 }}
+        className="flex-1 flex flex-col overflow-hidden min-h-0"
+        style={{ padding: isMobile ? 2 : 4, gap: 4 }}
       >
+        <ReconnectBanner />
         <PanelShell panelId="device" title="SensiConnect — Device Configuration" icon="🔌" style={{ flex: 1 }}>
           <Suspense fallback={<PanelFallback name="Device Config" />}>
             <DeviceConfigPage />
@@ -171,6 +214,7 @@ export function PanelGrid() {
         className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0"
         style={{ padding: 4, gap: 4 }}
       >
+        <ReconnectBanner />
         {/* ── Info banner ─────────────────────────────────────────────── */}
         <ExpandedBanner
           panelTitle={expDef?.title ?? expandedPanel}
@@ -240,6 +284,8 @@ export function PanelGrid() {
         gap: isMobile ? 2 : 4,
       }}
     >
+      <ReconnectBanner />
+
       {/* Core panels */}
       {corePanels.length > 0 && (
         <div

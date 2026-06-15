@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSensorStore } from '@/store/sensorStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { getSensorFamilyColor, formatQualityScore } from '@/utils/formatters'
 import { SensorCard } from '@/components/widgets/SensorCard'
 import { WaveformChart } from '@/components/widgets/WaveformChart'
+import { exportSensorHistoryJSON } from '@/utils/exporters'
 
 // ── Acoustic Spectrogram widget ──
 function AcousticSpectrogram({ sensorId }: { sensorId: string }) {
@@ -77,15 +78,37 @@ function getSensorFamily(modality: SensorModality): SensorFamily | null {
 export function SensorFamilyPanel() {
   const [activeFamily, setActiveFamily] = useState<SensorFamily>('Seismic')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
+  const updateRateHz = useSettingsStore((s) => s.panelSettings.sensorFamily.updateRateHz)
   const sensors = useSensorStore((s) => s.sensors)
   const sensorHistory = useSensorStore((s) => s.sensorHistory)
   const selectedId = useSensorStore((s) => s.selectedSensorId)
+
+  // Throttle renders to the configured update rate
+  const [renderTick, setRenderTick] = useState(0)
+  const lastRenderRef = useRef(0)
+  const frameRef = useRef<number>()
+  const scheduleRender = useCallback(() => {
+    const interval = 1000 / Math.max(0.1, updateRateHz)
+    const now = Date.now()
+    if (now - lastRenderRef.current >= interval) {
+      lastRenderRef.current = now
+      setRenderTick((t) => t + 1)
+    } else {
+      frameRef.current = requestAnimationFrame(scheduleRender)
+    }
+  }, [updateRateHz])
+
+  useEffect(() => {
+    frameRef.current = requestAnimationFrame(scheduleRender)
+    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current) }
+  }, [scheduleRender, sensors])
 
   const familySensors = useMemo(() => {
     return Array.from(sensors.values()).filter(
       (s) => getSensorFamily(s.modality) === activeFamily
     )
-  }, [sensors, activeFamily])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sensors, activeFamily, renderTick])
 
   const waveformSensorId = selectedId ?? familySensors[0]?.sensor_id
   const waveformHistory = waveformSensorId ? (sensorHistory.get(waveformSensorId) ?? []) : []
@@ -132,33 +155,32 @@ export function SensorFamilyPanel() {
       </div>
 
       {/* Family tab strip */}
-      <div className="tab-list shrink-0">
+      <div className="tab-list shrink-0" role="tablist" aria-label="Sensor families">
         {ALL_FAMILIES.map((family) => {
           const color = getSensorFamilyColor(family)
           const count = Array.from(sensors.values()).filter(
             (s) => getSensorFamily(s.modality) === family
           ).length
+          const isActive = activeFamily === family
           return (
             <button
               key={family}
+              aria-selected={isActive}
               onClick={() => setActiveFamily(family)}
-              className={`tab-btn${activeFamily === family ? ' active' : ''}`}
+              className={`tab-btn${isActive ? ' active' : ''}`}
               style={{
-                borderBottomColor: activeFamily === family ? color : 'transparent',
-                color: activeFamily === family ? color : undefined,
+                borderBottomColor: isActive ? color : 'transparent',
+                color: isActive ? color : undefined,
               }}
             >
-              <span
-                className="w-1.5 h-1.5 rounded-full inline-block mr-1"
-                style={{ background: color }}
-              />
+              <span className="w-1.5 h-1.5 rounded-full inline-block mr-1" style={{ background: color }} />
               {family}
               {count > 0 && (
                 <span
                   className="ml-1 text-[10px] px-1 rounded-lg"
                   style={{
-                    background: activeFamily === family ? `${color}22` : 'var(--bg-tertiary)',
-                    color: activeFamily === family ? color : 'var(--text-secondary)',
+                    background: isActive ? `${color}22` : 'var(--bg-tertiary)',
+                    color: isActive ? color : 'var(--text-secondary)',
                   }}
                 >
                   {count}
@@ -170,7 +192,7 @@ export function SensorFamilyPanel() {
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto" role="tabpanel" aria-label={`${activeFamily} sensors`}>
         {activeFamily === 'Acoustic' && isVisible('acousticSpectrogram') && waveformSensorId && (
           <AcousticSpectrogram sensorId={waveformSensorId} />
         )}
@@ -198,7 +220,25 @@ export function SensorFamilyPanel() {
             </div>
           ) : (
             familySensors.map((s) => (
-              <SensorCard key={s.sensor_id} sensorId={s.sensor_id} />
+              <div key={s.sensor_id} className="relative group">
+                <SensorCard sensorId={s.sensor_id} />
+                <button
+                  onClick={() => {
+                    const history = sensorHistory.get(s.sensor_id) ?? []
+                    exportSensorHistoryJSON(s.sensor_id, history)
+                  }}
+                  aria-label={`Download history for sensor ${s.sensor_id}`}
+                  title="Download history"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] px-1 py-[1px] rounded cursor-pointer"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  ↓
+                </button>
+              </div>
             ))
           )}
         </div>

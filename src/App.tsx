@@ -1,11 +1,15 @@
 import { useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
 import { PanelGrid } from '@/components/layout/PanelGrid'
+import { LoginPage } from '@/components/pages/LoginPage'
+import { RequireAuth } from '@/components/auth/RequireAuth'
 
-export function App() {
+function Dashboard() {
   const theme = useSystemStore((s) => s.theme)
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
@@ -39,7 +43,6 @@ export function App() {
       <TopNavBar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         <LeftSidebar />
-        {/* Mobile sidebar backdrop */}
         <div
           className={`mobile-sidebar-backdrop${mobileSidebarOpen ? ' active' : ''}`}
           onClick={() => setMobileSidebarOpen(false)}
@@ -48,5 +51,27 @@ export function App() {
         <PanelGrid />
       </div>
     </div>
+  )
+}
+
+export function App() {
+  const init = useAuthStore((s) => s.init)
+
+  useEffect(() => {
+    init()
+  }, [init])
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
+    </Routes>
   )
 }

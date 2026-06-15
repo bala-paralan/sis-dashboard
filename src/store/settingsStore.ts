@@ -84,13 +84,12 @@ const DEFAULT_PANELS: Record<string, boolean> = {
   weather:     true,
 }
 
-function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boolean>; defaultExpandedPanel: string | null } {
+function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boolean>; panelSettings: PanelSettings; defaultExpandedPanel: string | null } {
   try {
     const raw = localStorage.getItem('sis-settings')
-    if (!raw) return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null }
+    if (!raw) return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, panelSettings: DEFAULT_PANEL_SETTINGS, defaultExpandedPanel: null }
     const saved = JSON.parse(raw)
 
-    // Merge saved visibility into defaults (new widgets added later get default visible)
     const widgets = DEFAULT_WIDGETS.map((w) => ({
       ...w,
       visible: saved.widgets?.[w.id]?.visible ?? w.visible,
@@ -98,21 +97,47 @@ function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boole
       threshold: saved.widgets?.[w.id]?.threshold ?? w.threshold,
     }))
     const panels = { ...DEFAULT_PANELS, ...saved.panels }
+    const panelSettings: PanelSettings = {
+      alertPanel: { ...DEFAULT_PANEL_SETTINGS.alertPanel, ...saved.panelSettings?.alertPanel },
+      systemHealth: { ...DEFAULT_PANEL_SETTINGS.systemHealth, ...saved.panelSettings?.systemHealth },
+      sensorFamily: { ...DEFAULT_PANEL_SETTINGS.sensorFamily, ...saved.panelSettings?.sensorFamily },
+    }
     const defaultExpandedPanel = saved.defaultExpandedPanel ?? null
-    return { widgets, panels, defaultExpandedPanel }
+    return { widgets, panels, panelSettings, defaultExpandedPanel }
   } catch {
-    return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null }
+    return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, panelSettings: DEFAULT_PANEL_SETTINGS, defaultExpandedPanel: null }
   }
+}
+
+export interface PanelSettings {
+  alertPanel: {
+    maxAlerts: number
+  }
+  systemHealth: {
+    cpuWarnThreshold: number
+    gpuWarnThreshold: number
+  }
+  sensorFamily: {
+    updateRateHz: number
+  }
+}
+
+const DEFAULT_PANEL_SETTINGS: PanelSettings = {
+  alertPanel: { maxAlerts: 200 },
+  systemHealth: { cpuWarnThreshold: 80, gpuWarnThreshold: 75 },
+  sensorFamily: { updateRateHz: 1 },
 }
 
 interface SettingsState {
   widgets: WidgetDef[]
   panels: Record<string, boolean>
+  panelSettings: PanelSettings
   defaultExpandedPanel: string | null
   settingsOpen: boolean
 
   toggleWidget: (id: string) => void
   setWidgetOption: (id: string, key: 'updateRateHz' | 'threshold', value: number) => void
+  setPanelSetting: <K extends keyof PanelSettings>(panel: K, key: keyof PanelSettings[K], value: number) => void
   togglePanel: (panelId: string) => void
   setDefaultExpandedPanel: (id: string | null) => void
   setSettingsOpen: (open: boolean) => void
@@ -122,10 +147,11 @@ interface SettingsState {
   widgetsByCategory: () => Record<string, WidgetDef[]>
 }
 
-function persist(state: Pick<SettingsState, 'widgets' | 'panels' | 'defaultExpandedPanel'>) {
+function persist(state: Pick<SettingsState, 'widgets' | 'panels' | 'panelSettings' | 'defaultExpandedPanel'>) {
   const data = {
     widgets: Object.fromEntries(state.widgets.map((w) => [w.id, { visible: w.visible, updateRateHz: w.updateRateHz, threshold: w.threshold }])),
     panels: state.panels,
+    panelSettings: state.panelSettings,
     defaultExpandedPanel: state.defaultExpandedPanel,
   }
   localStorage.setItem('sis-settings', JSON.stringify(data))
@@ -136,13 +162,14 @@ const initial = loadFromStorage()
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   widgets: initial.widgets,
   panels: initial.panels,
+  panelSettings: initial.panelSettings,
   defaultExpandedPanel: initial.defaultExpandedPanel,
   settingsOpen: false,
 
   toggleWidget: (id) => {
     set((s) => {
       const widgets = s.widgets.map((w) => w.id === id ? { ...w, visible: !w.visible } : w)
-      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets, panels: s.panels, panelSettings: s.panelSettings, defaultExpandedPanel: s.defaultExpandedPanel })
       return { widgets }
     })
   },
@@ -150,22 +177,33 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setWidgetOption: (id, key, value) => {
     set((s) => {
       const widgets = s.widgets.map((w) => w.id === id ? { ...w, [key]: value } : w)
-      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets, panels: s.panels, panelSettings: s.panelSettings, defaultExpandedPanel: s.defaultExpandedPanel })
       return { widgets }
+    })
+  },
+
+  setPanelSetting: (panel, key, value) => {
+    set((s) => {
+      const panelSettings = {
+        ...s.panelSettings,
+        [panel]: { ...s.panelSettings[panel], [key]: value },
+      }
+      persist({ widgets: s.widgets, panels: s.panels, panelSettings, defaultExpandedPanel: s.defaultExpandedPanel })
+      return { panelSettings }
     })
   },
 
   togglePanel: (panelId) => {
     set((s) => {
       const panels = { ...s.panels, [panelId]: !s.panels[panelId] }
-      persist({ widgets: s.widgets, panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets: s.widgets, panels, panelSettings: s.panelSettings, defaultExpandedPanel: s.defaultExpandedPanel })
       return { panels }
     })
   },
 
   setDefaultExpandedPanel: (id) => {
     set((s) => {
-      persist({ widgets: s.widgets, panels: s.panels, defaultExpandedPanel: id })
+      persist({ widgets: s.widgets, panels: s.panels, panelSettings: s.panelSettings, defaultExpandedPanel: id })
       return { defaultExpandedPanel: id }
     })
   },
@@ -174,7 +212,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   resetToDefaults: () => {
     localStorage.removeItem('sis-settings')
-    set({ widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null })
+    set({ widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, panelSettings: DEFAULT_PANEL_SETTINGS, defaultExpandedPanel: null })
   },
 
   isWidgetVisible: (id) => get().widgets.find((w) => w.id === id)?.visible ?? true,

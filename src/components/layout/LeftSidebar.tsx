@@ -132,7 +132,7 @@ export function LeftSidebar() {
       </button>
 
       {!collapsed && (
-        <div className="flex flex-col flex-1 overflow-auto pt-1">
+        <nav aria-label="Main navigation" className="flex flex-col flex-1 overflow-auto pt-1">
           {/* Panel Navigator */}
           <div>
             <SectionHeader>Panels</SectionHeader>
@@ -179,6 +179,8 @@ export function LeftSidebar() {
                     setFilter({ sensorFamily: isActive ? 'ALL' : family })
                     setMobileSidebarOpen(false)
                   }}
+                  aria-pressed={isActive}
+                  aria-label={`Filter by ${family}`}
                   className="w-full flex items-center gap-[9px] py-[7px] px-[14px] border-none text-[12px] text-left transition-[color,background,border-color] duration-150 cursor-pointer"
                   style={{
                     borderLeft: `2px solid ${isActive ? color : 'transparent'}`,
@@ -251,7 +253,7 @@ export function LeftSidebar() {
               })}
             </div>
           </div>
-        </div>
+        </nav>
       )}
     </aside>
   )

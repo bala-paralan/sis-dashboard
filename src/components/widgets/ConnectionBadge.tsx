@@ -6,6 +6,7 @@ const RETRY_SECONDS = 10
 export function ConnectionBadge() {
   const status = useSystemStore((s) => s.connectionStatus)
   const reconnect = useSystemStore((s) => s.reconnect)
+  const latencyMs = useSystemStore((s) => s.latencyMs)
   const [countdown, setCountdown] = useState(RETRY_SECONDS)
   const intervalRef = useRef<ReturnType<typeof setInterval>>()
 
@@ -37,7 +38,7 @@ export function ConnectionBadge() {
   switch (status) {
     case 'connected':
       dotColor = 'var(--sensor-acoustic)'
-      label = 'Connected'
+      label = latencyMs !== null ? `Connected · ${latencyMs}ms` : 'Connected'
       break
     case 'reconnecting':
       dotColor = 'var(--alert-medium)'
@@ -69,6 +70,9 @@ export function ConnectionBadge() {
 
       <div
         className="flex items-center gap-1.5 px-[10px] h-8 rounded-full bg-bg-tertiary text-[11px] font-semibold text-text-secondary tracking-[0.04em] shrink-0"
+        role="status"
+        aria-live="polite"
+        aria-label={`Connection status: ${label}`}
         style={{ border: `1px solid ${isDisconnected ? 'rgba(239,68,68,0.4)' : 'var(--border-color)'}` }}
       >
         <span
@@ -90,6 +94,7 @@ export function ConnectionBadge() {
             </span>
             <button
               onClick={() => { reconnect(); setCountdown(RETRY_SECONDS) }}
+              aria-label="Connect now"
               className="ml-0.5 px-2 h-[22px] rounded border border-[rgba(239,68,68,0.5)] bg-[rgba(239,68,68,0.12)] text-alert-critical cursor-pointer text-[10px] font-bold tracking-[0.04em] transition-[background] duration-150 inline-flex items-center"
             >
               Connect Now
