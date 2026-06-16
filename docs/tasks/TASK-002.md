@@ -1,6 +1,7 @@
 # TASK-002 — Test Coverage for Newer Panels
 
-**Status:** 🔄 IN PROGRESS (this session)
+**Status:** ✅ DONE  
+**Commit:** `a02957b`
 
 ## Description
 
@@ -10,17 +11,17 @@ The initial test suite covered only the 6 core panels (AIMLPanel, AlertPanel, Li
 
 | Panel | Test file | Status |
 |-------|-----------|--------|
-| CounterUASPanel | `src/test/components/panels/CounterUASPanel.test.tsx` | 🔄 |
-| PersonnelPanel | `src/test/components/panels/PersonnelPanel.test.tsx` | 🔄 |
-| PowerPanel | `src/test/components/panels/PowerPanel.test.tsx` | 🔄 |
-| CommandPanel | `src/test/components/panels/CommandPanel.test.tsx` | 🔄 |
-| AdvancedAIPanel | `src/test/components/panels/AdvancedAIPanel.test.tsx` | 🔄 |
-| WeatherPanel | `src/test/components/panels/WeatherPanel.test.tsx` | 🔄 |
-| SettingsPanel | `src/test/components/panels/SettingsPanel.test.tsx` | 🔄 |
+| CounterUASPanel | `src/test/components/panels/CounterUASPanel.test.tsx` | ✅ 10 tests |
+| PersonnelPanel | `src/test/components/panels/PersonnelPanel.test.tsx` | ✅ 9 tests |
+| PowerPanel | `src/test/components/panels/PowerPanel.test.tsx` | ✅ 9 tests |
+| CommandPanel | `src/test/components/panels/CommandPanel.test.tsx` | ✅ 10 tests |
+| AdvancedAIPanel | `src/test/components/panels/AdvancedAIPanel.test.tsx` | ✅ 10 tests |
+| WeatherPanel | `src/test/components/panels/WeatherPanel.test.tsx` | ✅ 10 tests |
+| SettingsPanel | `src/test/components/panels/SettingsPanel.test.tsx` | ✅ 10 tests |
 
 ## Acceptance Criteria
 
-- [ ] All 7 new test files created
-- [ ] Each panel has ≥ 7 meaningful tests
-- [ ] Full suite stays green (no regressions)
-- [ ] Total test count rises from 273 to ≥ 322
+- [x] All 7 new test files created
+- [x] Each panel has ≥ 7 meaningful tests (68 tests added)
+- [x] Full suite stays green (no regressions)
+- [x] Total test count rose from 273 to 341
