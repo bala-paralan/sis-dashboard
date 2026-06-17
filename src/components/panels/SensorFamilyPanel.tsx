@@ -76,16 +76,20 @@ function getSensorFamily(modality: SensorModality): SensorFamily | null {
 
 export function SensorFamilyPanel() {
   const [activeFamily, setActiveFamily] = useState<SensorFamily>('Seismic')
+  const [search, setSearch] = useState('')
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
   const sensors = useSensorStore((s) => s.sensors)
   const sensorHistory = useSensorStore((s) => s.sensorHistory)
   const selectedId = useSensorStore((s) => s.selectedSensorId)
 
   const familySensors = useMemo(() => {
-    return Array.from(sensors.values()).filter(
-      (s) => getSensorFamily(s.modality) === activeFamily
-    )
-  }, [sensors, activeFamily])
+    const q = search.trim().toLowerCase()
+    return Array.from(sensors.values()).filter((s) => {
+      if (getSensorFamily(s.modality) !== activeFamily) return false
+      if (!q) return true
+      return s.sensor_id.toLowerCase().includes(q) || s.site_id.toLowerCase().includes(q)
+    })
+  }, [sensors, activeFamily, search])
 
   const waveformSensorId = selectedId ?? familySensors[0]?.sensor_id
   const waveformHistory = waveformSensorId ? (sensorHistory.get(waveformSensorId) ?? []) : []
@@ -129,6 +133,24 @@ export function SensorFamilyPanel() {
             <strong style={{ color: familyColor }}>{formatQualityScore(avgQuality)}</strong>
           </span>
         </div>
+      </div>
+
+      {/* Search input */}
+      <div className="px-3 py-1.5 border-b border-border-color bg-bg-secondary shrink-0">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setSearch('') }}
+          placeholder="Search by sensor ID or site…"
+          aria-label="Search sensors"
+          className="w-full h-7 px-2.5 rounded-lg text-[11px] border outline-none"
+          style={{
+            background: 'var(--bg-tertiary)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-primary)',
+          }}
+        />
       </div>
 
       {/* Family tab strip */}
@@ -194,7 +216,11 @@ export function SensorFamilyPanel() {
           {familySensors.length === 0 ? (
             <div className="no-data col-span-full h-[100px]">
               <span className="no-data-icon text-[20px]">📡</span>
-              <span>No {activeFamily} sensors</span>
+              <span>
+                {search.trim()
+                  ? `No results for "${search.trim()}"`
+                  : `No ${activeFamily} sensors`}
+              </span>
             </div>
           ) : (
             familySensors.map((s) => (

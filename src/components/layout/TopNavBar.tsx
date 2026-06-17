@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +22,8 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -118,9 +121,26 @@ export function TopNavBar() {
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user ? (user.displayName ?? user.email.split('@')[0]) : 'Operator'}
         </span>
+        {user?.role && (
+          <span className="text-[9px] text-text-muted tracking-[0.08em] uppercase">
+            {user.role}
+          </span>
+        )}
       </div>
+
+      {/* Logout button */}
+      {user && (
+        <button
+          onClick={() => void logout()}
+          className="text-[11px] font-semibold px-2.5 h-7 rounded-[6px] border border-border-color bg-bg-tertiary text-text-secondary cursor-pointer hover:text-alert-critical hover:border-alert-critical transition-colors shrink-0"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          ⏻
+        </button>
+      )}
     </header>
   )
 }
