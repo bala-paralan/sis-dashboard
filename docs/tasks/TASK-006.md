@@ -1,6 +1,6 @@
 # TASK-006: Sensor REST API Module
 
-## Status: TODO
+## Status: DONE
 
 ## Goal
 Add a typed REST API module for sensor data so panels can fetch historical readings

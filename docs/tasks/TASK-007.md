@@ -1,6 +1,6 @@
 # TASK-007: Incident Report JSON Export
 
-## Status: TODO
+## Status: DONE
 
 ## Goal
 The Command & Reporting panel has a "Sign & Export PDF" stub. Replace the stub with

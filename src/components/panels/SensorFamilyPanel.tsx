@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSensorStore } from '@/store/sensorStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { getSensorFamilyColor, formatQualityScore } from '@/utils/formatters'
 import { SensorCard } from '@/components/widgets/SensorCard'
 import { WaveformChart } from '@/components/widgets/WaveformChart'
+import { getSensors } from '@/api/sensors'
 
 // ── Acoustic Spectrogram widget ──
 function AcousticSpectrogram({ sensorId }: { sensorId: string }) {
@@ -76,10 +77,41 @@ function getSensorFamily(modality: SensorModality): SensorFamily | null {
 
 export function SensorFamilyPanel() {
   const [activeFamily, setActiveFamily] = useState<SensorFamily>('Seismic')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [staleData, setStaleData] = useState(false)
   const isVisible = useSettingsStore((s) => s.isWidgetVisible)
   const sensors = useSensorStore((s) => s.sensors)
   const sensorHistory = useSensorStore((s) => s.sensorHistory)
   const selectedId = useSensorStore((s) => s.selectedSensorId)
+  const updateSensor = useSensorStore((s) => s.updateSensor)
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    setStaleData(false)
+    try {
+      const catalogue = await getSensors()
+      const now = new Date().toISOString()
+      catalogue.forEach((entry) => {
+        updateSensor({
+          sensor_id: entry.sensor_id,
+          modality: entry.modality,
+          timestamp: now,
+          site_id: entry.site_id,
+          bop_id: entry.bop_id,
+          quality_score: 0,
+          raw_value: {},
+          sensor_status: entry.sensor_status,
+          firmware_ver: entry.firmware_ver,
+          lat: entry.lat,
+          lon: entry.lon,
+        })
+      })
+    } catch {
+      setStaleData(true)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [updateSensor])
 
   const familySensors = useMemo(() => {
     return Array.from(sensors.values()).filter(
@@ -114,21 +146,36 @@ export function SensorFamilyPanel() {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <span className="sr-only">Sensor Families</span>
       {/* Stats bar */}
-      <div className="py-1 px-3 border-b border-border-color bg-bg-secondary flex items-center justify-end shrink-0 gap-3">
-        <span
-          className="w-[7px] h-[7px] rounded-full inline-block"
-          style={{ background: familyColor, boxShadow: `0 0 5px ${familyColor}` }}
-        />
-        <div className="flex gap-2 text-[10px] text-text-secondary">
-          <span>
-            Online:{' '}
-            <strong className="text-sensor-acoustic">{onlineCount}</strong>/{familySensors.length}
-          </span>
-          <span>
-            Avg Q:{' '}
-            <strong style={{ color: familyColor }}>{formatQualityScore(avgQuality)}</strong>
-          </span>
+      <div className="py-1 px-3 border-b border-border-color bg-bg-secondary flex items-center justify-between shrink-0 gap-3">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-[7px] h-[7px] rounded-full inline-block"
+            style={{ background: familyColor, boxShadow: `0 0 5px ${familyColor}` }}
+          />
+          <div className="flex gap-2 text-[10px] text-text-secondary">
+            <span>
+              Online:{' '}
+              <strong className="text-sensor-acoustic">{onlineCount}</strong>/{familySensors.length}
+            </span>
+            <span>
+              Avg Q:{' '}
+              <strong style={{ color: familyColor }}>{formatQualityScore(avgQuality)}</strong>
+            </span>
+          </div>
+          {staleData && (
+            <span className="text-[10px] text-alert-medium" title="WS unavailable — showing cached data">
+              ⚠ stale
+            </span>
+          )}
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          aria-label="Refresh sensors"
+          className="text-[10px] px-2 py-[2px] border border-border-color rounded bg-bg-tertiary text-text-secondary cursor-pointer disabled:opacity-50"
+        >
+          {isRefreshing ? '…' : '↺ Refresh'}
+        </button>
       </div>
 
       {/* Family tab strip */}
