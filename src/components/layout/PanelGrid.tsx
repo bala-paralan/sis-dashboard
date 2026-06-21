@@ -21,6 +21,7 @@ const WeatherPanel      = lazy(() => import('@/components/panels/WeatherPanel').
 const SettingsPanel     = lazy(() => import('@/components/panels/SettingsPanel').then((m) => ({ default: m.SettingsPanel })))
 const DeviceConfigPage  = lazy(() => import('@/components/pages/DeviceConfigPage').then((m) => ({ default: m.DeviceConfigPage })))
 const CameraGrid        = lazy(() => import('@/components/cameras/CameraGrid').then((m) => ({ default: m.CameraGrid })))
+const AlertStatsPanel   = lazy(() => import('@/components/panels/AlertStatsPanel').then((m) => ({ default: m.AlertStatsPanel })))
 
 function PanelFallback({ name }: { name: string }) {
   return (
@@ -54,6 +55,7 @@ const ALL_PANELS: PanelDef[] = [
   { id: 'command',    title: 'Command & Reporting',    icon: '📋',  sidebarId: 'command',    component: CommandPanel      },
   { id: 'advancedai', title: 'Advanced AI Monitoring', icon: '🧠',  sidebarId: 'advancedai', component: AdvancedAIPanel   },
   { id: 'weather',    title: 'Weather & Terrain',      icon: '🌤',  sidebarId: 'weather',    component: WeatherPanel      },
+  { id: 'alertstats', title: 'Alert Statistics',       icon: '📊',  sidebarId: 'alertstats', component: AlertStatsPanel   },
 ]
 
 const SIDEBAR_TO_PANEL: Record<string, string> = Object.fromEntries(

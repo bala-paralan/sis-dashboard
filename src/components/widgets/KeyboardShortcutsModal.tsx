@@ -44,6 +44,10 @@ export function KeyboardShortcutsModal({ onClose }: Props) {
           </div>
 
           <div className="flex items-center gap-4 text-[11px]">
+            <kbd className="w-20 px-2 py-1 bg-bg-tertiary border border-border-color rounded text-text-primary font-mono text-center shrink-0">Ctrl+K</kbd>
+            <span className="text-text-secondary">Open global command search</span>
+          </div>
+          <div className="flex items-center gap-4 text-[11px]">
             <kbd className="w-20 px-2 py-1 bg-bg-tertiary border border-border-color rounded text-text-primary font-mono text-center shrink-0">?</kbd>
             <span className="text-text-secondary">Show this help overlay</span>
           </div>

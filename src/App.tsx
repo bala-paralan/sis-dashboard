@@ -9,10 +9,12 @@ import { PanelGrid } from '@/components/layout/PanelGrid'
 import { ToastContainer } from '@/components/widgets/ToastContainer'
 import { NotificationCenter } from '@/components/widgets/NotificationCenter'
 import { KeyboardShortcutsModal } from '@/components/widgets/KeyboardShortcutsModal'
+import { SearchModal } from '@/components/widgets/SearchModal'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export function App() {
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const theme = useSystemStore((s) => s.theme)
   const setReconnectFn = useSystemStore((s) => s.setReconnectFn)
   const setSendMessageFn = useSystemStore((s) => s.setSendMessageFn)
@@ -23,6 +25,18 @@ export function App() {
   const addNotification = useNotificationStore((s) => s.addNotification)
 
   useKeyboardShortcuts(() => setShowShortcuts(true))
+
+  // Ctrl+K global search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Push CRITICAL/HIGH alerts to notification center
   useEffect(() => {
@@ -79,6 +93,7 @@ export function App() {
       <ToastContainer />
       <NotificationCenter />
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
     </div>
   )
 }

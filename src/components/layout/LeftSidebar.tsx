@@ -21,6 +21,7 @@ const NEW_PANELS = [
   { id: 'command',    label: 'Command',       icon: '📋' },
   { id: 'advancedai', label: 'Adv. AI',       icon: '🧠' },
   { id: 'weather',    label: 'Weather',       icon: '🌤' },
+  { id: 'alertstats', label: 'Alert Stats',   icon: '📊' },
 ]
 
 const SENSOR_FAMILIES: SensorFamily[] = [
