@@ -1,6 +1,6 @@
 # TASK-010: Satellite & Terrain Imagery Overlay
 
-## Status: TODO
+## Status: DONE
 
 ## Description
 Enable the satellite imagery and terrain overlay widgets that are currently declared but hidden (visibility: false). Integrate a tile layer switcher on the Tactical Map.
