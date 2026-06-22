@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useSystemStore } from '@/store/systemStore'
 import { useViewStore } from '@/store/viewStore'
+import { useAlertRulesStore, type AlertRule, type RuleField, type RuleOperator } from '@/store/alertRulesStore'
+import type { ThreatLevel } from '@/types/sensors'
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Video & Imaging':            '📹',
@@ -23,7 +25,195 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Interoperability':           '🔗',
 }
 
-type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds'
+type Tab = 'widgets' | 'panels' | 'display' | 'layout' | 'thresholds' | 'rules'
+
+const BLANK_RULE: Omit<AlertRule, 'id' | 'createdAt'> = {
+  name: '',
+  enabled: true,
+  field: 'quality_score',
+  operator: '<',
+  value: 0.3,
+  severity: 'HIGH',
+  messageTemplate: 'Sensor {sensor_id} triggered rule: {value}',
+}
+
+function RuleBuilderTab() {
+  const rules = useAlertRulesStore((s) => s.rules)
+  const addRule = useAlertRulesStore((s) => s.addRule)
+  const toggleRule = useAlertRulesStore((s) => s.toggleRule)
+  const deleteRule = useAlertRulesStore((s) => s.deleteRule)
+  const resetRules = useAlertRulesStore((s) => s.resetToDefaults)
+  const [form, setForm] = useState<Omit<AlertRule, 'id' | 'createdAt'>>(BLANK_RULE)
+  const [showForm, setShowForm] = useState(false)
+
+  const handleAdd = () => {
+    if (!form.name.trim()) return
+    addRule(form)
+    setForm(BLANK_RULE)
+    setShowForm(false)
+  }
+
+  const fieldLabels: Record<RuleField, string> = {
+    quality_score: 'Quality Score (0–1)',
+    sensor_status: 'Sensor Status',
+  }
+
+  const inputCls = 'bg-bg-tertiary border border-border-color rounded text-text-primary text-[11px] px-2 h-7 outline-none'
+
+  const SEVERITY_COLORS: Record<ThreatLevel, string> = {
+    CRITICAL: 'var(--alert-critical)',
+    HIGH: 'var(--alert-high)',
+    MEDIUM: 'var(--alert-medium)',
+    LOW: 'var(--alert-low)',
+    CLEAR: 'var(--sensor-acoustic)',
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] text-text-secondary">
+          Custom rules trigger alerts when sensor conditions are met.
+        </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="text-[10px] font-bold px-2 py-1 rounded border cursor-pointer"
+          style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none' }}
+        >
+          + New Rule
+        </button>
+      </div>
+
+      {/* Rule form */}
+      {showForm && (
+        <div
+          className="flex flex-col gap-2 p-3 rounded-lg"
+          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--accent-blue)' }}
+        >
+          <div className="text-[11px] font-bold text-text-primary">New Alert Rule</div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] text-text-secondary">Rule Name</label>
+            <input className={inputCls} placeholder="e.g. Low Quality Alert" value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-[10px] text-text-secondary">Field</label>
+              <select className={inputCls} value={form.field}
+                onChange={(e) => setForm((f) => ({ ...f, field: e.target.value as RuleField, value: e.target.value === 'quality_score' ? 0.3 : 'OFFLINE' }))}>
+                {(Object.keys(fieldLabels) as RuleField[]).map((f) => (
+                  <option key={f} value={f}>{fieldLabels[f]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-text-secondary">Operator</label>
+              <select className={inputCls} value={form.operator}
+                onChange={(e) => setForm((f) => ({ ...f, operator: e.target.value as RuleOperator }))}>
+                {(['<', '<=', '>', '>=', '=='] as RuleOperator[]).map((op) => (
+                  <option key={op} value={op}>{op}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-text-secondary">Value</label>
+              <input className={`${inputCls} w-20`}
+                type={form.field === 'quality_score' ? 'number' : 'text'}
+                step={form.field === 'quality_score' ? 0.05 : undefined}
+                min={form.field === 'quality_score' ? 0 : undefined}
+                max={form.field === 'quality_score' ? 1 : undefined}
+                value={String(form.value)}
+                onChange={(e) => setForm((f) => ({ ...f, value: form.field === 'quality_score' ? Number(e.target.value) : e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-[10px] text-text-secondary">Severity</label>
+              <select className={inputCls} value={form.severity}
+                onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value as ThreatLevel }))}>
+                {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as ThreatLevel[]).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] text-text-secondary">Message template ({'{sensor_id}'}, {'{value}'}, {'{status}'})</label>
+            <input className={inputCls} value={form.messageTemplate}
+              onChange={(e) => setForm((f) => ({ ...f, messageTemplate: e.target.value }))} />
+          </div>
+          <div className="flex gap-2 mt-1">
+            <button
+              onClick={handleAdd}
+              disabled={!form.name.trim()}
+              className="flex-1 py-1.5 rounded text-[11px] font-bold border-none cursor-pointer"
+              style={{ background: form.name.trim() ? 'var(--accent-blue)' : 'var(--bg-tertiary)', color: form.name.trim() ? '#fff' : 'var(--text-muted)' }}
+            >
+              Save Rule
+            </button>
+            <button onClick={() => { setForm(BLANK_RULE); setShowForm(false) }}
+              className="px-3 py-1.5 rounded text-[11px] cursor-pointer"
+              style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--panel-border)', color: 'var(--text-secondary)' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rules list */}
+      {rules.length === 0 && (
+        <div className="text-center text-[11px] text-text-muted py-6">No rules defined. Click "+ New Rule" to add one.</div>
+      )}
+      {rules.map((rule) => (
+        <div
+          key={rule.id}
+          className="flex items-start gap-2 p-2.5 rounded-lg"
+          style={{ background: 'var(--bg-secondary)', border: `1px solid ${rule.enabled ? 'var(--panel-border)' : 'var(--border-subtle)'}`, opacity: rule.enabled ? 1 : 0.6 }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-[11px] font-bold text-text-primary truncate">{rule.name}</span>
+              <span className="text-[9px] font-bold px-1 rounded" style={{ background: 'rgba(0,0,0,0.2)', color: SEVERITY_COLORS[rule.severity] }}>
+                {rule.severity}
+              </span>
+            </div>
+            <div className="text-[10px] text-text-secondary">
+              {rule.field} {rule.operator} {String(rule.value)}
+            </div>
+            <div className="text-[10px] text-text-muted italic mt-0.5 truncate">{rule.messageTemplate}</div>
+          </div>
+          <div className="flex flex-col gap-1 items-end shrink-0">
+            <button
+              onClick={() => toggleRule(rule.id)}
+              className="text-[9px] px-1.5 py-0.5 rounded border cursor-pointer"
+              style={{
+                background: rule.enabled ? 'rgba(34,197,94,0.1)' : 'var(--bg-tertiary)',
+                color: rule.enabled ? 'var(--sensor-acoustic)' : 'var(--text-muted)',
+                borderColor: rule.enabled ? 'rgba(34,197,94,0.3)' : 'var(--border-subtle)',
+              }}
+            >
+              {rule.enabled ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => deleteRule(rule.id)}
+              className="text-[9px] text-alert-critical bg-transparent border-none cursor-pointer"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex justify-end mt-1">
+        <button
+          onClick={resetRules}
+          className="text-[10px] text-text-muted cursor-pointer bg-transparent border border-border-subtle rounded px-2 py-1"
+        >
+          Reset to defaults
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -66,6 +256,7 @@ export function SettingsPanel() {
     { id: 'display',    label: 'Display',    icon: '🎨' },
     { id: 'layout',     label: 'Layout',     icon: '⤢' },
     { id: 'thresholds', label: 'Thresholds', icon: '⚡' },
+    { id: 'rules',      label: 'Rules',      icon: '⚠' },
   ]
 
   const PANEL_LABELS: Record<string, { label: string; icon: string; isNew?: boolean }> = {
@@ -436,6 +627,9 @@ export function SettingsPanel() {
             })}
           </div>
         )}
+
+        {/* ── RULES TAB ── */}
+        {activeTab === 'rules' && <RuleBuilderTab />}
 
       </div>
 
