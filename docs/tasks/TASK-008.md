@@ -1,6 +1,6 @@
 # TASK-008: Incident Playback Timeline
 
-## Status: TODO
+## Status: DONE
 
 ## Description
 Add a timeline/scrubbing UI that replays recorded alert and sensor events. Events accumulate in a circular buffer in Zustand during the session.
