@@ -24,9 +24,13 @@ vi.mock('react-leaflet', async () => {
     Marker: ({ children }: { children?: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'marker' }, children),
     Polygon: () => null,
+    Polyline: () => null,
+    Tooltip: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'tooltip' }, children),
     Popup: ({ children }: { children?: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'popup' }, children),
     useMap: vi.fn(() => ({ fitBounds: vi.fn(), setView: vi.fn() })),
+    useMapEvents: vi.fn(() => null),
   }
 })
 

@@ -10,7 +10,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png'
 
 L.Icon.Default.mergeOptions({ iconUrl, shadowUrl: iconShadow })
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
   MapContainer,
   TileLayer,
@@ -19,8 +19,11 @@ import {
 } from 'react-leaflet'
 import { useSensorStore } from '@/store/sensorStore'
 import { useAlertStore } from '@/store/alertStore'
+import { useGeofenceStore } from '@/store/geofenceStore'
 import { SensorMarker } from '@/components/map/SensorMarker'
 import { TrackMarker } from '@/components/map/TrackMarker'
+import { ZoneDrawer } from '@/components/map/ZoneDrawer'
+import { GeofenceOverlay } from '@/components/map/GeofenceOverlay'
 
 // ── Hardcoded alert zones ────────────────────────────────────
 const ZONE_A: [number, number][] = [
@@ -88,10 +91,59 @@ function MapOverlays() {
   )
 }
 
+// ── Zone list sidebar ─────────────────────────────────────────
+function ZoneList({ onClose }: { onClose: () => void }) {
+  const zones = useGeofenceStore((s) => s.zones)
+  const deleteZone = useGeofenceStore((s) => s.deleteZone)
+
+  return (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-48 z-[400] flex flex-col"
+      style={{ background: 'var(--bg-secondary)', borderLeft: '1px solid var(--panel-border)', boxShadow: '-4px 0 12px rgba(0,0,0,0.3)' }}
+    >
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-color">
+        <span className="text-[11px] font-bold text-text-primary">Geofence Zones</span>
+        <button onClick={onClose} className="text-[12px] text-text-muted cursor-pointer bg-transparent border-none">✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
+        {zones.length === 0 && (
+          <div className="text-[10px] text-text-muted text-center mt-4">
+            No zones defined.<br />Click "Draw Zone" to add one.
+          </div>
+        )}
+        {zones.map((zone) => (
+          <div
+            key={zone.id}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md"
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--panel-border)' }}
+          >
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: zone.color }} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-semibold text-text-primary truncate">{zone.name}</div>
+              <div className="text-[9px] text-text-muted uppercase tracking-wide">{zone.type}</div>
+            </div>
+            <button
+              onClick={() => deleteZone(zone.id)}
+              title="Delete zone"
+              className="text-[10px] text-alert-critical cursor-pointer bg-transparent border-none shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main panel component ─────────────────────────────────────
 export function LiveMapPanel() {
   const sensors = useSensorStore((s) => s.sensors)
   const tracks = useSensorStore((s) => s.tracks)
+  const userZones = useGeofenceStore((s) => s.zones)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [showZoneList, setShowZoneList] = useState(false)
 
   const sensorCount = sensors.size
   const trackCount = tracks.length
@@ -115,9 +167,36 @@ export function LiveMapPanel() {
             {trackCount} tracks
           </span>
         </span>
-        <div className="flex gap-2 text-[10px] text-text-secondary">
-          <span className="text-[#10B981]">■ Zone A</span>
-          <span className="text-[#F59E0B]">■ Zone B</span>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 text-[10px] text-text-secondary">
+            <span className="text-[#10B981]">■ Zone A</span>
+            <span className="text-[#F59E0B]">■ Zone B</span>
+          </div>
+          {/* Zone tools */}
+          <button
+            onClick={() => { setIsDrawing(true); setShowZoneList(false) }}
+            disabled={isDrawing}
+            className="text-[10px] font-semibold px-2 py-[2px] rounded border cursor-pointer"
+            style={{
+              background: isDrawing ? 'var(--accent-blue)' : 'var(--bg-tertiary)',
+              color: isDrawing ? '#fff' : 'var(--text-secondary)',
+              borderColor: 'var(--panel-border)',
+              opacity: isDrawing ? 0.7 : 1,
+            }}
+          >
+            {isDrawing ? '✏ Drawing…' : '+ Draw Zone'}
+          </button>
+          <button
+            onClick={() => setShowZoneList((v) => !v)}
+            className="text-[10px] font-semibold px-2 py-[2px] rounded border cursor-pointer"
+            style={{
+              background: showZoneList ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
+              color: 'var(--text-secondary)',
+              borderColor: 'var(--panel-border)',
+            }}
+          >
+            Zones ({userZones.length})
+          </button>
         </div>
       </div>
 
@@ -129,6 +208,7 @@ export function LiveMapPanel() {
           className="h-full w-full"
           zoomControl
           attributionControl={false}
+          style={{ cursor: isDrawing ? 'crosshair' : undefined }}
         >
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="OpenStreetMap">
@@ -148,7 +228,26 @@ export function LiveMapPanel() {
           </LayersControl>
 
           <MapOverlays />
+          <GeofenceOverlay />
+          <ZoneDrawer
+            isDrawing={isDrawing}
+            onFinish={() => setIsDrawing(false)}
+            onCancel={() => setIsDrawing(false)}
+          />
         </MapContainer>
+
+        {/* Zone list sidebar */}
+        {showZoneList && <ZoneList onClose={() => setShowZoneList(false)} />}
+
+        {/* Draw mode hint */}
+        {isDrawing && (
+          <div
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-[400] pointer-events-none px-3 py-1.5 rounded-lg text-[11px] font-semibold"
+            style={{ background: 'rgba(37,99,235,0.9)', color: '#fff' }}
+          >
+            Click on the map to add vertices · 3+ points to close polygon
+          </div>
+        )}
       </div>
     </div>
   )
