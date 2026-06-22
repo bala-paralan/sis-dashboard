@@ -1,4 +1,8 @@
+import { useEffect } from 'react'
 import { useSystemStore } from '@/store/systemStore'
+import { useDiagnosticsStore } from '@/store/diagnosticsStore'
+import { useDiagnostics } from '@/hooks/useDiagnostics'
+import { useAlertStore } from '@/store/alertStore'
 
 function GaugeBar({
   label,
@@ -86,7 +90,83 @@ function CommLink({
   )
 }
 
+function Sparkline({ data, color = '#60A5FA', height = 28 }: { data: number[]; color?: string; height?: number }) {
+  if (data.length < 2) return <div style={{ height }} />
+  const max = Math.max(...data, 1)
+  const w = 120
+  const h = height
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(' ')
+  return (
+    <svg width={w} height={h} style={{ display: 'block' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} />
+    </svg>
+  )
+}
+
+function DiagnosticsSection() {
+  useDiagnostics()
+
+  const fps = useDiagnosticsStore((s) => s.fps)
+  const wsLatencyMs = useDiagnosticsStore((s) => s.wsLatencyMs)
+  const eventsPerSec = useDiagnosticsStore((s) => s.eventsPerSec)
+  const sparklineFps = useDiagnosticsStore((s) => s.sparklineFps)
+  const sparklineLatency = useDiagnosticsStore((s) => s.sparklineLatency)
+  const sparklineEvents = useDiagnosticsStore((s) => s.sparklineEvents)
+  const totalAlerts = useDiagnosticsStore((s) => s.totalAlerts)
+  const acknowledgedAlerts = useDiagnosticsStore((s) => s.acknowledgedAlerts)
+  const sessionStartMs = useDiagnosticsStore((s) => s.sessionStartMs)
+
+  const alerts = useAlertStore((s) => s.alerts)
+  const unackedCount = alerts.filter((a) => !a.acknowledged).length
+
+  const sessionMin = Math.floor((Date.now() - sessionStartMs) / 60000)
+  const ackPct = totalAlerts > 0 ? ((acknowledgedAlerts / totalAlerts) * 100).toFixed(0) : '—'
+
+  const fpsColor = fps < 30 ? 'var(--alert-medium)' : fps < 15 ? 'var(--alert-critical)' : 'var(--sensor-acoustic)'
+  const latColor = wsLatencyMs !== null && wsLatencyMs > 150 ? 'var(--alert-medium)' : 'var(--sensor-acoustic)'
+
+  const MetricCard = ({ label, value, color, sparkline }: { label: string; value: string; color: string; sparkline: number[] }) => (
+    <div className="bg-bg-primary border border-border-color rounded-[6px] p-2">
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-[9px] text-text-secondary uppercase tracking-[0.06em]">{label}</span>
+        <span className="text-[13px] font-bold font-mono" style={{ color }}>{value}</span>
+      </div>
+      <Sparkline data={sparkline} color={color} height={24} />
+    </div>
+  )
+
+  return (
+    <>
+      <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mt-3 mb-2">
+        Dashboard Performance
+      </div>
+      <div className="grid grid-cols-1 gap-1.5 mb-2">
+        <MetricCard label="Render FPS" value={`${fps}`} color={fpsColor} sparkline={sparklineFps} />
+        <MetricCard label="WS Latency" value={wsLatencyMs !== null ? `${Math.round(wsLatencyMs)}ms` : '—'} color={latColor} sparkline={sparklineLatency} />
+        <MetricCard label="Events/s" value={`${eventsPerSec}`} color="var(--sensor-optical)" sparkline={sparklineEvents} />
+      </div>
+      <div className="text-[10px] font-bold tracking-[0.1em] text-text-secondary uppercase mt-2 mb-1.5">
+        Session Statistics
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+        {[
+          { label: 'Session', value: `${sessionMin}m` },
+          { label: 'Total alerts', value: String(totalAlerts) },
+          { label: 'Acknowledged', value: `${ackPct}%` },
+          { label: 'Pending', value: String(unackedCount) },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-bg-primary border border-border-color rounded-[6px] px-2 py-1.5">
+            <div className="text-text-secondary">{label}</div>
+            <div className="font-bold text-text-primary font-mono">{value}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export function SystemHealthPanel() {
+  useEffect(() => {}, [])
   const health = useSystemStore((s) => s.health)
   const connectionStatus = useSystemStore((s) => s.connectionStatus)
 
@@ -231,6 +311,9 @@ export function SystemHealthPanel() {
             {connectionStatus.toUpperCase()}
           </span>
         </div>
+
+        {/* Dashboard diagnostics */}
+        <DiagnosticsSection />
       </div>
     </div>
   )
