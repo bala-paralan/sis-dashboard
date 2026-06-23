@@ -3,7 +3,7 @@
 // Video/imaging panel with grid modes, detection overlays, PTZ
 // ============================================================
 
-import React, { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSensorStore } from '@/store/sensorStore'
 import { useSystemStore } from '@/store/systemStore'
 import type { SensorPayload, SensorModality } from '@/types/sensors'

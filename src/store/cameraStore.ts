@@ -13,6 +13,7 @@ import {
   startStream  as apiStart,
   stopStream   as apiStop,
 } from '@/api/cameras';
+import { toast } from '@/store/toastStore';
 
 interface CameraState {
   cameras:      Camera[];
@@ -65,36 +66,66 @@ export const useCameraStore = create<CameraState>()((set, get) => ({
       });
       set({ cameras: res.cameras, total: res.total, page: res.page });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Failed to load cameras' });
+      const msg = e instanceof Error ? e.message : 'Failed to load cameras';
+      set({ error: msg });
+      toast.error(msg);
     } finally {
       set({ loading: false });
     }
   },
 
   addCamera: async (input) => {
-    const camera = await apiCreate(input);
-    set((s) => ({ cameras: [camera, ...s.cameras], total: s.total + 1 }));
-    return camera;
+    try {
+      const camera = await apiCreate(input);
+      set((s) => ({ cameras: [camera, ...s.cameras], total: s.total + 1 }));
+      toast.success('Camera added successfully');
+      return camera;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to add camera');
+      throw e;
+    }
   },
 
   editCamera: async (id, input) => {
-    const updated = await apiUpdate(id, input);
-    set((s) => ({ cameras: s.cameras.map((c) => c.id === id ? updated : c) }));
-    return updated;
+    try {
+      const updated = await apiUpdate(id, input);
+      set((s) => ({ cameras: s.cameras.map((c) => c.id === id ? updated : c) }));
+      toast.success('Camera updated');
+      return updated;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update camera');
+      throw e;
+    }
   },
 
   removeCamera: async (id) => {
-    await apiDelete(id);
-    set((s) => ({
-      cameras:    s.cameras.filter((c) => c.id !== id),
-      total:      s.total - 1,
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    }));
+    try {
+      await apiDelete(id);
+      set((s) => ({
+        cameras:    s.cameras.filter((c) => c.id !== id),
+        total:      s.total - 1,
+        selectedId: s.selectedId === id ? null : s.selectedId,
+      }));
+      toast.success('Camera removed');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to remove camera');
+      throw e;
+    }
   },
 
   testCamera: async (id) => {
-    const result = await apiTest(id);
-    set((s) => ({ testResults: { ...s.testResults, [id]: result } }));
+    try {
+      const result = await apiTest(id);
+      set((s) => ({ testResults: { ...s.testResults, [id]: result } }));
+      if (result.reachable) {
+        toast.success(`Camera reachable (${result.latency_ms}ms)`);
+      } else {
+        toast.warning(`Camera unreachable: ${result.message}`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Camera test failed');
+      throw e;
+    }
   },
 
   selectCamera: (id) => set({ selectedId: id }),

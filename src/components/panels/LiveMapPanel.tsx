@@ -10,7 +10,6 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png'
 
 L.Icon.Default.mergeOptions({ iconUrl, shadowUrl: iconShadow })
 
-import React from 'react'
 import {
   MapContainer,
   TileLayer,
