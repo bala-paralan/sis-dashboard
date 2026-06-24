@@ -10,6 +10,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 560,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('hls.js')) return 'vendor-hls'
+          if (id.includes('node_modules/')) return 'vendor'
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     host: true,
