@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSystemStore } from '@/store/systemStore'
 import { useAlertStore } from '@/store/alertStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -39,6 +40,10 @@ const THREAT_LEVELS: { level: ThreatLevel; color: string }[] = [
   { level: 'LOW', color: 'var(--alert-low)' },
 ]
 
+const ROUTE_PANELS: Record<string, string> = {
+  device: '/device-config',
+}
+
 export function LeftSidebar() {
   const collapsed            = useSystemStore((s) => s.sidebarCollapsed)
   const toggleSidebar        = useSystemStore((s) => s.toggleSidebar)
@@ -50,6 +55,7 @@ export function LeftSidebar() {
   const setFilter            = useAlertStore((s) => s.setFilter)
   const filter               = useAlertStore((s) => s.filter)
   const isPanelVisible       = useSettingsStore((s) => s.isPanelVisible)
+  const navigate             = useNavigate()
 
   const alertCountByLevel = (level: ThreatLevel) =>
     alerts.filter((a) => a.threat_level === level && !a.acknowledged).length
@@ -60,6 +66,12 @@ export function LeftSidebar() {
     const active = activePanel === panel.id
 
     function handleClick() {
+      const route = ROUTE_PANELS[panel.id]
+      if (route) {
+        navigate(route)
+        setMobileSidebarOpen(false)
+        return
+      }
       setActivePanel(panel.id)
       setMobileSidebarOpen(false)
       const el = document.getElementById(`panel-${panel.id}`)

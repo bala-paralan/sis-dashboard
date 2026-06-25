@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -14,6 +16,12 @@ function formatUTCTime(d: Date): string {
   return `${hh}:${mm}:${ss} UTC`
 }
 
+const ROLE_COLOR: Record<string, string> = {
+  ADMIN:    'var(--alert-critical)',
+  OPERATOR: 'var(--sensor-acoustic)',
+  VIEWER:   'var(--text-secondary)',
+}
+
 export function TopNavBar() {
   const [time, setTime] = useState(() => formatUTCTime(new Date()))
   const [site, setSite] = useState(SITES[0])
@@ -21,6 +29,8 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const { user, logout } = useAuthStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -114,13 +124,34 @@ export function TopNavBar() {
       {/* User badge */}
       <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
         <span
-          className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
-          style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
+          className="w-[7px] h-[7px] rounded-full shrink-0"
+          style={{
+            background: ROLE_COLOR[user?.role ?? 'OPERATOR'],
+            boxShadow: `0 0 5px ${ROLE_COLOR[user?.role ?? 'OPERATOR']}`,
+          }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user?.displayName ?? user?.email ?? 'Operator'}
         </span>
+        {user?.role && (
+          <span className="text-[9px] font-bold px-1 rounded" style={{ color: ROLE_COLOR[user.role] }}>
+            {user.role}
+          </span>
+        )}
       </div>
+
+      {/* Logout button — only when authenticated */}
+      {user && (
+        <button
+          onClick={async () => { await logout(); navigate('/login', { replace: true }) }}
+          className="flex items-center gap-1 py-1 px-2.5 rounded-[6px] border border-border-color text-[11px] text-text-secondary cursor-pointer transition-colors hover:text-text-primary hover:bg-bg-tertiary shrink-0"
+          style={{ background: 'transparent' }}
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          ⏏ Out
+        </button>
+      )}
     </header>
   )
 }

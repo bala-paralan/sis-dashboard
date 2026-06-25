@@ -127,3 +127,21 @@ vi.mock('leaflet', () => ({
   divIcon: vi.fn(() => ({})),
   Icon: { Default: { mergeOptions: vi.fn() } },
 }))
+
+// ── Mock react-router-dom (components using useNavigate don't need a real Router in unit tests) ──
+vi.mock('react-router-dom', () => ({
+  useNavigate: vi.fn(() => vi.fn()),
+  useLocation: vi.fn(() => ({ pathname: '/' })),
+  useParams: vi.fn(() => ({})),
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={typeof to === 'string' ? to : '#'}>{children}</a>
+  ),
+  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={typeof to === 'string' ? to : '#'}>{children}</a>
+  ),
+  Navigate: () => null,
+  Routes: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Route: ({ element }: { element: React.ReactNode }) => <>{element}</>,
+  BrowserRouter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  MemoryRouter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
