@@ -5,8 +5,11 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { OperatorNotes } from '@/components/widgets/OperatorNotes'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
+import { alertsToCsv, downloadCsv } from '@/utils/exportCsv'
 
 // ── Threat level filter chips ─────────────────────────────────
 const THREAT_LEVELS: (ThreatLevel | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
@@ -85,6 +88,7 @@ export function AlertPanel() {
   const setFilter = useAlertStore((s) => s.setFilter)
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
+  const isWidgetVisible = useSettingsStore((s) => s.isWidgetVisible)
 
   const prevCountRef = useRef(0)
 
@@ -118,6 +122,11 @@ export function AlertPanel() {
 
   const handleAck = (id: string) => {
     acknowledgeAlert(id, '')
+  }
+
+  const handleExportCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10)
+    downloadCsv(alertsToCsv(displayed), `alerts-${dateStr}.csv`)
   }
 
   const critCount = allAlerts.filter(
@@ -194,6 +203,21 @@ export function AlertPanel() {
         <span className="ml-auto text-[10px] text-text-secondary">
           {displayed.length} shown
         </span>
+
+        <button
+          onClick={handleExportCsv}
+          disabled={displayed.length === 0}
+          title="Export visible alerts as CSV"
+          className="text-[10px] font-bold px-[10px] h-7 rounded-full cursor-pointer tracking-[0.05em] transition-all duration-150 inline-flex items-center gap-1"
+          style={{
+            border: '1px solid var(--border-color)',
+            background: 'transparent',
+            color: displayed.length === 0 ? 'var(--text-muted)' : 'var(--accent-teal)',
+            cursor: displayed.length === 0 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          ⬇ CSV
+        </button>
       </div>
 
       {/* Alert list — scrollable, never grows beyond its shell */}
@@ -209,6 +233,8 @@ export function AlertPanel() {
           ))
         )}
       </div>
+
+      {isWidgetVisible('operatorNotes') && <OperatorNotes />}
     </div>
   )
 }

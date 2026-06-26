@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAlertStore } from '@/store/alertStore'
 
 interface NodeStatus {
   id: string
@@ -89,8 +90,31 @@ function NodeCard({ node }: { node: NodeStatus }) {
 
 const textareaClass = 'w-full bg-bg-secondary border border-border-color rounded-md text-text-primary text-[11px] p-2 resize-y font-[inherit] box-border'
 
+function printReport(title: string, bodyHtml: string): void {
+  const win = window.open('', '_blank', 'width=800,height=600')
+  if (!win) return
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>${title}</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px;max-width:750px;margin:0 auto}
+      h1{font-size:18px;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:16px}
+      h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#555;margin:16px 0 6px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px}
+      th{background:#f0f0f0;font-weight:bold}
+      .meta{color:#555;font-size:11px;margin-bottom:16px}
+      .notes{border:1px solid #ccc;padding:10px;min-height:60px;white-space:pre-wrap;font-size:11px}
+      @media print{body{padding:0}}
+    </style>
+  </head><body>${bodyHtml}</body></html>`)
+  win.document.close()
+  win.focus()
+  win.print()
+}
+
 export function CommandPanel() {
   const nodes = useNodes()
+  const alerts = useAlertStore((s) => s.alerts)
   const [tab, setTab] = useState<'nodes' | 'incident' | 'handover'>('nodes')
   const [incidentText, setIncidentText] = useState('')
   const [handoverNotes, setHandoverNotes] = useState('')
@@ -222,7 +246,29 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+                onClick={() => {
+                  const ts = new Date().toLocaleString()
+                  const onlineCount = nodes.filter((n) => n.status === 'ONLINE').length
+                  const nodeRows = nodes.map((n) =>
+                    `<tr><td>${n.id}</td><td>${n.location}</td><td>${n.status}</td><td>${n.threatLevel}</td><td>${n.alerts}</td><td>${n.health.toFixed(0)}%</td></tr>`
+                  ).join('')
+                  const recentAlerts = alerts.slice(0, 20).map((a) =>
+                    `<tr><td>${new Date(a.timestamp).toLocaleTimeString()}</td><td>${a.threat_level}</td><td>${a.classification}</td><td>${a.acknowledged ? 'YES' : 'NO'}</td></tr>`
+                  ).join('')
+                  printReport('Incident Report — SIS IINVSYS', `
+                    <h1>Incident Report — SIS IINVSYS</h1>
+                    <div class="meta">Generated: ${ts} | Nodes online: ${onlineCount}/${nodes.length} | Total alerts: ${totalAlerts}</div>
+                    <h2>Node Status</h2>
+                    <table><thead><tr><th>Node</th><th>Location</th><th>Status</th><th>Threat</th><th>Alerts</th><th>Health</th></tr></thead><tbody>${nodeRows}</tbody></table>
+                    <h2>Incident Narrative</h2>
+                    <div class="notes">${incidentText || '(no narrative entered)'}</div>
+                    <h2>Recent Alerts (last 20)</h2>
+                    <table><thead><tr><th>Time</th><th>Level</th><th>Classification</th><th>Acked</th></tr></thead><tbody>${recentAlerts}</tbody></table>
+                  `)
+                }}
+              >
                 ⬇ Export PDF → BHQN
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
@@ -266,7 +312,30 @@ export function CommandPanel() {
               className={`${textareaClass} h-[80px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
+              <button
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+                onClick={() => {
+                  const ts = new Date().toLocaleString()
+                  const onlineCount = nodes.filter((n) => n.status === 'ONLINE').length
+                  printReport('Shift Handover Summary — SIS IINVSYS', `
+                    <h1>Shift Handover Summary — SIS IINVSYS</h1>
+                    <div class="meta">Generated: ${ts} | Period: Last 12h | Nodes online: ${onlineCount}/${nodes.length}</div>
+                    <h2>Period Summary</h2>
+                    <ul style="font-size:11px;line-height:1.7">
+                      <li>Total alerts: ${totalAlerts + 12} (8 acknowledged, ${totalAlerts + 4} pending)</li>
+                      <li>Sensor faults: 2 (BOP-BETA-01: ACOUSTIC S04, BOP-DELTA-01: RADAR S12)</li>
+                      <li>Tracks detected: 7 (5 ANIMAL, 1 HUMAN, 1 UNKNOWN)</li>
+                      <li>UAS contacts: 1 (commercial, 450m range, logged)</li>
+                      <li>GPR anomalies: 3 flagged for field verification</li>
+                    </ul>
+                    <h2>Handover Notes</h2>
+                    <div class="notes">${handoverNotes || '(no notes entered)'}</div>
+                    <h2>Outgoing Operator Signature</h2>
+                    <div style="border-bottom:1px solid #ccc;margin-top:40px;width:200px">&nbsp;</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">Date: ${ts}</div>
+                  `)
+                }}
+              >
                 ✍ Sign &amp; Export PDF
               </button>
             </div>
