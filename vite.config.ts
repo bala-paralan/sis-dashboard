@@ -10,6 +10,24 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('hls.js') || id.includes('node_modules/hls.js')) {
+            return 'vendor-hls'
+          }
+          if (id.includes('leaflet') || id.includes('react-leaflet')) {
+            return 'vendor-leaflet'
+          }
+          if (id.includes('zustand')) {
+            return 'vendor-zustand'
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     host: true,

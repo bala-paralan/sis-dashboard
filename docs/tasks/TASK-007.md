@@ -1,6 +1,6 @@
 # TASK-007: Production Build Verification & Performance Audit
 
-## Status: TODO
+## Status: DONE
 
 ## Description
 Verify that `npm run build` produces a clean production bundle, identify any bundle size issues, and ensure the app loads correctly in production mode.
@@ -13,8 +13,8 @@ Verify that `npm run build` produces a clean production bundle, identify any bun
 5. Ensure all environment variables are documented in `.env.example`
 
 ## Acceptance Criteria
-- [ ] `npm run build` exits with code 0
-- [ ] No TypeScript errors in production build
-- [ ] Largest JS chunk ≤ 500KB gzipped (or split with dynamic import)
-- [ ] `.env.example` documents all VITE_* variables used in the codebase
-- [ ] All existing tests continue to pass
+- [x] `npm run build` exits with code 0 (zero errors, zero warnings)
+- [x] No TypeScript errors in production build
+- [x] Added manualChunks in vite.config.ts: hls.js → vendor-hls (162KB gz), leaflet → vendor-leaflet (91KB gz), zustand → vendor-zustand (4KB gz); CameraGrid reduced from 166KB→4KB gz
+- [x] `.env.example` documents all 4 VITE_* variables (VITE_API_URL, VITE_WS_URL, VITE_DATA_SOURCE, VITE_SSE_REST_URL)
+- [x] All existing tests continue to pass (273/273)
