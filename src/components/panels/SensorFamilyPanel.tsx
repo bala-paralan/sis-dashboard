@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/store/settingsStore'
 import { getSensorFamilyColor, formatQualityScore } from '@/utils/formatters'
 import { SensorCard } from '@/components/widgets/SensorCard'
 import { WaveformChart } from '@/components/widgets/WaveformChart'
+import { exportCsv } from '@/utils/exportCsv'
 
 // ── Acoustic Spectrogram widget ──
 function AcousticSpectrogram({ sensorId }: { sensorId: string }) {
@@ -105,6 +106,22 @@ export function SensorFamilyPanel() {
 
   const familyColor = getSensorFamilyColor(activeFamily)
   const onlineCount = familySensors.filter((s) => s.sensor_status === 'ONLINE').length
+
+  function handleExportSensorCsv() {
+    exportCsv(
+      `sensors_${activeFamily.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`,
+      familySensors.map((s) => ({
+        sensor_id: s.sensor_id,
+        modality: s.modality,
+        status: s.sensor_status,
+        quality_score: s.quality_score.toFixed(2),
+        lat: s.lat,
+        lon: s.lon,
+        timestamp: s.timestamp,
+      }))
+    )
+  }
+
   const avgQuality =
     familySensors.length > 0
       ? familySensors.reduce((sum, s) => sum + s.quality_score, 0) / familySensors.length
@@ -119,7 +136,7 @@ export function SensorFamilyPanel() {
           className="w-[7px] h-[7px] rounded-full inline-block"
           style={{ background: familyColor, boxShadow: `0 0 5px ${familyColor}` }}
         />
-        <div className="flex gap-2 text-[10px] text-text-secondary">
+        <div className="flex gap-2 text-[10px] text-text-secondary items-center">
           <span>
             Online:{' '}
             <strong className="text-sensor-acoustic">{onlineCount}</strong>/{familySensors.length}
@@ -128,6 +145,14 @@ export function SensorFamilyPanel() {
             Avg Q:{' '}
             <strong style={{ color: familyColor }}>{formatQualityScore(avgQuality)}</strong>
           </span>
+          <button
+            onClick={handleExportSensorCsv}
+            disabled={familySensors.length === 0}
+            className="py-[2px] px-2 bg-bg-tertiary border border-border-color rounded cursor-pointer text-[10px] text-text-secondary disabled:opacity-40"
+            title="Export sensor list as CSV"
+          >
+            ⬇ CSV
+          </button>
         </div>
       </div>
 

@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { exportCsv } from '@/utils/exportCsv'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -120,6 +121,20 @@ export function AlertPanel() {
     acknowledgeAlert(id, '')
   }
 
+  const handleExportCsv = () => {
+    exportCsv(`alerts_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`,
+      displayed.map((a) => ({
+        id: a.id,
+        timestamp: a.timestamp,
+        threat_level: a.threat_level,
+        sensor_family: a.sensor_family,
+        sensor_id: a.sensor_id,
+        message: a.message,
+        acknowledged: a.acknowledged ? 'YES' : 'NO',
+      }))
+    )
+  }
+
   const critCount = allAlerts.filter(
     (a) => !a.acknowledged && a.threat_level === 'CRITICAL'
   ).length
@@ -191,8 +206,16 @@ export function AlertPanel() {
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-text-secondary">
           {displayed.length} shown
+          <button
+            onClick={handleExportCsv}
+            disabled={displayed.length === 0}
+            className="py-[2px] px-2 bg-bg-tertiary border border-border-color rounded cursor-pointer text-[10px] text-text-secondary disabled:opacity-40"
+            title="Export visible alerts as CSV"
+          >
+            ⬇ CSV
+          </button>
         </span>
       </div>
 
