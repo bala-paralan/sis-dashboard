@@ -1,7 +1,7 @@
 # TASK-007: DeviceConfigPage Tests + Export / Report Generation
 
 **Status:** ✅ COMPLETED (Session 3)  
-**Commit:** `(see below)`
+**Commit:** `ad02767 feat(TASK-007): DeviceConfigPage tests + export utility + alert CSV export`
 
 ## Objective
 Add test coverage for DeviceConfigPage and implement an export/print feature for incident reports generated in the CommandPanel.
