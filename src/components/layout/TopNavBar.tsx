@@ -4,6 +4,7 @@ import { useSystemStore } from '@/store/systemStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
+import { UserBadge } from '@/components/layout/UserBadge'
 
 const SITES = ['BOP-ALPHA-01', 'BOP-BETA-01']
 
@@ -112,15 +113,7 @@ export function TopNavBar() {
       <ThemeToggle />
 
       {/* User badge */}
-      <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
-        <span
-          className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
-          style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
-        />
-        <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
-        </span>
-      </div>
+      <UserBadge />
     </header>
   )
 }
