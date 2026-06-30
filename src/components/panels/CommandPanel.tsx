@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { reportToText, downloadText } from '@/utils/exporters'
 
 interface NodeStatus {
   id: string
@@ -222,8 +223,23 @@ export function CommandPanel() {
               className={`${textareaClass} h-[100px]`}
             />
             <div className="flex gap-1.5 mt-2">
-              <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
-                ⬇ Export PDF → BHQN
+              <button
+                className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold"
+                onClick={() => {
+                  const text = reportToText({
+                    id: `RPT-${Date.now()}`,
+                    timestamp: new Date().toISOString(),
+                    title: 'Incident Report',
+                    location: 'BOP-ALPHA-01',
+                    severity: nodes.some((n) => n.threatLevel === 'HIGH') ? 'HIGH' : 'LOW',
+                    reporter: 'Operator',
+                    description: incidentText || '(no description)',
+                    actions: '(to be filled)',
+                  })
+                  downloadText(`incident-report-${Date.now()}.txt`, text)
+                }}
+              >
+                ⬇ Export Report
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot
