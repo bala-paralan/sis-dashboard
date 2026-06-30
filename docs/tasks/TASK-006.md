@@ -1,6 +1,7 @@
 # TASK-006: Authentication UI — Login Page + Route Guards
 
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED (Session 3)  
+**Commit:** `940bbee feat(TASK-006): authentication UI — login page, auth store, route guards`
 
 ## Objective
 Add a login page with JWT authentication and route guards to protect the dashboard from unauthenticated access. Wire up the existing `src/api/auth.ts` to a login form.
