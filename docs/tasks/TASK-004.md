@@ -1,6 +1,7 @@
 # TASK-004: Test Coverage for New Stores and Camera Components
 
-**Status:** 🔄 IN PROGRESS (Session 2)
+**Status:** ✅ COMPLETED (Session 2)  
+**Commit:** `cd5223e feat(TASK-004): add test coverage for new stores and camera components`
 
 ## Objective
 Add comprehensive test suites for the three stores added in TASK-002/003 that have no coverage yet, plus all five camera UI components from TASK-003.
