@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/store/settingsStore'
+import { toJSON, downloadFile, formatExportTimestamp } from '@/lib/exportUtils'
 
 interface NodeStatus {
   id: string
@@ -224,6 +225,23 @@ export function CommandPanel() {
             <div className="flex gap-1.5 mt-2">
               <button className="flex-1 py-1.5 bg-accent-blue border-none rounded text-white cursor-pointer text-[10px] font-bold">
                 ⬇ Export PDF → BHQN
+              </button>
+              <button
+                onClick={() => downloadFile(
+                  toJSON({
+                    generatedAt: new Date().toISOString(),
+                    node: 'BOP-ALPHA-01',
+                    activeAlerts: totalAlerts,
+                    nodesOnline: nodes.filter((n) => n.status === 'ONLINE').length,
+                    totalNodes: nodes.length,
+                    narrative: incidentText,
+                  }),
+                  `incident-report-${formatExportTimestamp()}.json`,
+                  'application/json'
+                )}
+                className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]"
+              >
+                ⬇ Export JSON
               </button>
               <button className="py-1.5 px-[10px] bg-bg-tertiary border border-border-color rounded text-text-secondary cursor-pointer text-[10px]">
                 📎 Attach Snapshot

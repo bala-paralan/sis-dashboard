@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
+import { alertsToCSV, downloadFile, formatExportTimestamp } from '@/lib/exportUtils'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
 
 // ── Threat level filter chips ─────────────────────────────────
@@ -191,8 +192,19 @@ export function AlertPanel() {
           <option value="ACKED">Acknowledged</option>
         </select>
 
-        <span className="ml-auto text-[10px] text-text-secondary">
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-text-secondary">
           {displayed.length} shown
+          <button
+            onClick={() => downloadFile(
+              alertsToCSV(displayed),
+              `alerts-${formatExportTimestamp()}.csv`,
+              'text/csv;charset=utf-8;'
+            )}
+            className="py-[3px] px-2 rounded border border-border-color bg-bg-tertiary cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
+            title="Export visible alerts as CSV"
+          >
+            ⬇ Export CSV
+          </button>
         </span>
       </div>
 
