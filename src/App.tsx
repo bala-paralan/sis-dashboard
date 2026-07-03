@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { useAudioAlerts } from '@/hooks/useAudioAlerts'
 import { useSystemStore } from '@/store/systemStore'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { LeftSidebar } from '@/components/layout/LeftSidebar'
@@ -14,6 +15,7 @@ function Dashboard() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const setMobileSidebarOpen = useSystemStore((s) => s.setMobileSidebarOpen)
   const { connect, sendMessage } = useWebSocket()
+  useAudioAlerts()
 
   useEffect(() => {
     setReconnectFn(connect)

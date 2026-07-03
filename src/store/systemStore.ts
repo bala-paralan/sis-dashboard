@@ -11,6 +11,7 @@ interface SystemState {
   activePanel: string
   sidebarCollapsed: boolean
   mobileSidebarOpen: boolean
+  alertMuted: boolean
   reconnectFn: (() => void) | null
   sendMessageFn: ((msg: object) => void) | null
   setHealth: (h: SystemHealth) => void
@@ -22,6 +23,7 @@ interface SystemState {
   toggleSidebar: () => void
   setMobileSidebarOpen: (open: boolean) => void
   toggleMobileSidebar: () => void
+  toggleAlertMute: () => void
   setReconnectFn: (fn: () => void) => void
   reconnect: () => void
   setSendMessageFn: (fn: (msg: object) => void) => void
@@ -35,6 +37,8 @@ function applyTheme(theme: 'dark' | 'light') {
 const storedTheme = (localStorage.getItem('sis-theme') as 'dark' | 'light') ?? 'dark'
 applyTheme(storedTheme)
 
+const storedMuted = localStorage.getItem('sis-alert-muted') === 'true'
+
 export const useSystemStore = create<SystemState>()((set, get) => ({
   health: null,
   theme: storedTheme,
@@ -43,6 +47,7 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
   activePanel: 'map',
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
+  alertMuted: storedMuted,
   reconnectFn: null,
   sendMessageFn: null,
 
@@ -86,6 +91,12 @@ export const useSystemStore = create<SystemState>()((set, get) => ({
 
   toggleMobileSidebar: () => {
     set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen }))
+  },
+
+  toggleAlertMute: () => {
+    const next = !get().alertMuted
+    localStorage.setItem('sis-alert-muted', String(next))
+    set({ alertMuted: next })
   },
 
   setReconnectFn: (fn: () => void) => {

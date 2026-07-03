@@ -25,6 +25,8 @@ export function TopNavBar() {
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
   const user = useAuthStore((s) => s.user)
   const logoutFn = useAuthStore((s) => s.logout)
+  const alertMuted = useSystemStore((s) => s.alertMuted)
+  const toggleAlertMute = useSystemStore((s) => s.toggleAlertMute)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -112,6 +114,17 @@ export function TopNavBar() {
           </span>
         </div>
       )}
+
+      {/* Alert mute toggle */}
+      <button
+        aria-label={alertMuted ? 'Unmute alerts' : 'Mute alerts'}
+        onClick={toggleAlertMute}
+        title={alertMuted ? 'Unmute alerts' : 'Mute alerts'}
+        className="shrink-0 w-[30px] h-[30px] flex items-center justify-center rounded-[6px] border border-border-color bg-bg-tertiary cursor-pointer text-[15px] transition-colors"
+        style={{ color: alertMuted ? 'var(--text-muted)' : 'var(--text-secondary)' }}
+      >
+        {alertMuted ? '🔇' : '🔔'}
+      </button>
 
       {/* Theme toggle */}
       <ThemeToggle />
