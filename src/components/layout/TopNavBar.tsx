@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAlertStore } from '@/store/alertStore'
 import { useSystemStore } from '@/store/systemStore'
+import { useAuthStore } from '@/store/authStore'
 import { ConnectionBadge } from '@/components/widgets/ConnectionBadge'
 import { ThemeToggle } from '@/components/widgets/ThemeToggle'
 import { ScenarioSelector } from '@/components/widgets/ScenarioSelector'
@@ -21,6 +23,9 @@ export function TopNavBar() {
   const unackedCount = alerts.filter((a) => !a.acknowledged).length
   const toggleMobileSidebar = useSystemStore((s) => s.toggleMobileSidebar)
   const mobileSidebarOpen = useSystemStore((s) => s.mobileSidebarOpen)
+  const user = useAuthStore((s) => s.user)
+  const logoutFn = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -111,16 +116,25 @@ export function TopNavBar() {
       {/* Theme toggle */}
       <ThemeToggle />
 
-      {/* User badge */}
+      {/* User badge + logout */}
       <div className="flex items-center gap-1.5 py-1 px-[10px] rounded-[6px] bg-bg-tertiary border border-border-color shrink-0">
         <span
           className="w-[7px] h-[7px] rounded-full bg-sensor-acoustic shrink-0"
           style={{ boxShadow: '0 0 5px var(--sensor-acoustic)' }}
         />
         <span className="topbar-user-label text-[11px] text-text-primary font-semibold">
-          Operator
+          {user ? (user.displayName ?? user.email) : 'Operator'}
         </span>
       </div>
+      {user && (
+        <button
+          aria-label="Logout"
+          onClick={async () => { await logoutFn(); navigate('/login', { replace: true }) }}
+          className="shrink-0 py-1 px-2 text-[10px] font-semibold text-text-secondary border border-border-color rounded-[6px] bg-bg-tertiary cursor-pointer hover:text-alert-critical hover:border-alert-critical transition-colors"
+        >
+          Logout
+        </button>
+      )}
     </header>
   )
 }

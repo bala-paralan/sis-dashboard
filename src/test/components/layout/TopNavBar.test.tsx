@@ -1,10 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { TopNavBar } from '@/components/layout/TopNavBar'
 import { useSystemStore } from '@/store/systemStore'
 import { useAlertStore } from '@/store/alertStore'
 import type { Alert } from '@/types/sensors'
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: vi.fn((sel: (s: { user: null; logout: () => Promise<void> }) => unknown) =>
+    sel({ user: null, logout: async () => {} })
+  ),
+}))
 
 function makeAlert(id: string, acked = false): Alert {
   return {
