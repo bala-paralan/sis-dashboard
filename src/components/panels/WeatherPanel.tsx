@@ -113,7 +113,7 @@ function WindCompass({ dir, speed }: { dir: string; speed: number }) {
       })}
       <line x1={cx} y1={cy} x2={x} y2={y} stroke="var(--accent-blue)" strokeWidth={2} strokeLinecap="round" />
       <circle cx={cx} cy={cy} r={2.5} fill="var(--accent-blue)" />
-      <text x={cx} y={cy + 2} textAnchor="middle" dominantBaseline="middle" fill="transparent" fontSize={8}>{speed}</text>
+      <text x={cx} y={cy + 2} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.7)" fontSize={8}>{speed}</text>
     </svg>
   )
 }

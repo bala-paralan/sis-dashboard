@@ -234,6 +234,11 @@ function SensiConnect3D({ ports, liveSet, selectedPort, onSelect }: { ports: Sen
 
 // ── Pin table ─────────────────────────────────────────────────────────────────
 
+function stableSignalPct(portId: string): number {
+  const hash = portId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return 60 + (hash % 40)
+}
+
 function PinTable({ ports, liveSet, selectedPort, onSelect }: { ports: SensiPort[]; liveSet: Set<string>; selectedPort: string | null; onSelect: (p: string) => void }) {
   const FACE_LABEL: Record<FaceId, string> = { top:'Ethernet (PoE+)', mid:'RF / SMA', bot:'Serial (RS-485)', rear:'GPIO / USB3' }
   return (
@@ -263,7 +268,7 @@ function PinTable({ ports, liveSet, selectedPort, onSelect }: { ports: SensiPort
                       <td style={{padding:'5px 10px'}}><span style={{fontSize:10,color:'var(--text-secondary)',letterSpacing:'0.04em'}}>{p.modality}</span></td>
                       <td style={{padding:'5px 10px'}}><span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:6,height:6,borderRadius:'50%',background:fc,flexShrink:0,boxShadow:live?`0 0 4px ${fc}`:'none'}}/><span style={{fontSize:10,color:fc}}>{p.family}</span></span></td>
                       <td style={{padding:'5px 10px'}}><StatusPill live={live}/></td>
-                      <td style={{padding:'5px 10px'}}><div style={{width:'100%',height:4,background:'var(--bg-tertiary)',borderRadius:2,overflow:'hidden'}}><div style={{width:live?`${60+Math.random()*40}%`:'0%',height:'100%',background:live?fc:'transparent',borderRadius:2,transition:'width 0.6s ease'}}/></div></td>
+                      <td style={{padding:'5px 10px'}}><div style={{width:'100%',height:4,background:'var(--bg-tertiary)',borderRadius:2,overflow:'hidden'}}><div style={{width:live?`${stableSignalPct(p.port)}%`:'0%',height:'100%',background:live?fc:'transparent',borderRadius:2,transition:'width 0.6s ease'}}/></div></td>
                     </tr>
                   )
                 })}
@@ -404,8 +409,12 @@ function OverviewTab({ ports, liveSet, selectedPort, onSelect, unit }: {
 
 // ── Port Configuration tab ────────────────────────────────────────────────────
 
+const NODE_OPTIONS = ['SC-001 — BOP Alpha', 'SC-002 — BOP Bravo', 'SC-003 — COB Command'] as const
+type NodeOption = typeof NODE_OPTIONS[number]
+
 function PortConfigTab({ onEditPort }: { onEditPort: (idx: number) => void }) {
   const [filter, setFilter] = useState<'all'|'active'|'free'|'warn'>('all')
+  const [selectedNode, setSelectedNode] = useState<NodeOption>(NODE_OPTIONS[0])
   const isMobile = useIsMobile()
 
   const filtered = PORT_DEFS.filter(p =>
@@ -428,10 +437,8 @@ function PortConfigTab({ onEditPort }: { onEditPort: (idx: number) => void }) {
       {/* Filter bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Node:</span>
-        <select style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
-          <option>SC-001 — BOP Alpha</option>
-          <option>SC-002 — BOP Bravo</option>
-          <option>SC-003 — COB Command</option>
+        <select value={selectedNode} onChange={(e) => setSelectedNode(e.target.value as NodeOption)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
+          {NODE_OPTIONS.map((n) => <option key={n}>{n}</option>)}
         </select>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {(['all','active','free','warn'] as const).map(f => (
