@@ -53,6 +53,8 @@ export function SettingsPanel() {
 
   const theme = useSystemStore((s) => s.theme)
   const toggleTheme = useSystemStore((s) => s.toggleTheme)
+  const audioAlertsEnabled = useSettingsStore((s) => s.audioAlertsEnabled)
+  const toggleAudioAlerts = useSettingsStore((s) => s.toggleAudioAlerts)
 
   const defaultExpandedPanel    = useSettingsStore((s) => s.defaultExpandedPanel)
   const setDefaultExpandedPanel = useSettingsStore((s) => s.setDefaultExpandedPanel)
@@ -235,6 +237,23 @@ export function SettingsPanel() {
                   </div>
                 </div>
                 <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
+              </div>
+            </div>
+
+            <div className="bg-bg-secondary border border-border-color rounded-lg p-4">
+              <div className="text-[12px] font-bold mb-3 text-text-primary">
+                Audio Alerts
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[12px]">
+                    {audioAlertsEnabled ? '🔔 Audio Alerts On' : '🔕 Audio Alerts Off'}
+                  </div>
+                  <div className="text-[11px] text-text-secondary mt-[2px]">
+                    Play a beep for new CRITICAL and HIGH alerts
+                  </div>
+                </div>
+                <Toggle checked={audioAlertsEnabled} onChange={toggleAudioAlerts} />
               </div>
             </div>
 

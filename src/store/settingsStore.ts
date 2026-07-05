@@ -84,10 +84,10 @@ const DEFAULT_PANELS: Record<string, boolean> = {
   weather:     true,
 }
 
-function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boolean>; defaultExpandedPanel: string | null } {
+function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boolean>; defaultExpandedPanel: string | null; audioAlertsEnabled: boolean } {
   try {
     const raw = localStorage.getItem('sis-settings')
-    if (!raw) return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null }
+    if (!raw) return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null, audioAlertsEnabled: true }
     const saved = JSON.parse(raw)
 
     // Merge saved visibility into defaults (new widgets added later get default visible)
@@ -99,9 +99,10 @@ function loadFromStorage(): { widgets: WidgetDef[]; panels: Record<string, boole
     }))
     const panels = { ...DEFAULT_PANELS, ...saved.panels }
     const defaultExpandedPanel = saved.defaultExpandedPanel ?? null
-    return { widgets, panels, defaultExpandedPanel }
+    const audioAlertsEnabled = saved.audioAlertsEnabled ?? true
+    return { widgets, panels, defaultExpandedPanel, audioAlertsEnabled }
   } catch {
-    return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null }
+    return { widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null, audioAlertsEnabled: true }
   }
 }
 
@@ -110,23 +111,26 @@ interface SettingsState {
   panels: Record<string, boolean>
   defaultExpandedPanel: string | null
   settingsOpen: boolean
+  audioAlertsEnabled: boolean
 
   toggleWidget: (id: string) => void
   setWidgetOption: (id: string, key: 'updateRateHz' | 'threshold', value: number) => void
   togglePanel: (panelId: string) => void
   setDefaultExpandedPanel: (id: string | null) => void
   setSettingsOpen: (open: boolean) => void
+  toggleAudioAlerts: () => void
   resetToDefaults: () => void
   isWidgetVisible: (id: string) => boolean
   isPanelVisible: (panelId: string) => boolean
   widgetsByCategory: () => Record<string, WidgetDef[]>
 }
 
-function persist(state: Pick<SettingsState, 'widgets' | 'panels' | 'defaultExpandedPanel'>) {
+function persist(state: Pick<SettingsState, 'widgets' | 'panels' | 'defaultExpandedPanel' | 'audioAlertsEnabled'>) {
   const data = {
     widgets: Object.fromEntries(state.widgets.map((w) => [w.id, { visible: w.visible, updateRateHz: w.updateRateHz, threshold: w.threshold }])),
     panels: state.panels,
     defaultExpandedPanel: state.defaultExpandedPanel,
+    audioAlertsEnabled: state.audioAlertsEnabled,
   }
   localStorage.setItem('sis-settings', JSON.stringify(data))
 }
@@ -138,11 +142,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   panels: initial.panels,
   defaultExpandedPanel: initial.defaultExpandedPanel,
   settingsOpen: false,
+  audioAlertsEnabled: initial.audioAlertsEnabled,
 
   toggleWidget: (id) => {
     set((s) => {
       const widgets = s.widgets.map((w) => w.id === id ? { ...w, visible: !w.visible } : w)
-      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel, audioAlertsEnabled: s.audioAlertsEnabled })
       return { widgets }
     })
   },
@@ -150,7 +155,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setWidgetOption: (id, key, value) => {
     set((s) => {
       const widgets = s.widgets.map((w) => w.id === id ? { ...w, [key]: value } : w)
-      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel, audioAlertsEnabled: s.audioAlertsEnabled })
       return { widgets }
     })
   },
@@ -158,23 +163,31 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   togglePanel: (panelId) => {
     set((s) => {
       const panels = { ...s.panels, [panelId]: !s.panels[panelId] }
-      persist({ widgets: s.widgets, panels, defaultExpandedPanel: s.defaultExpandedPanel })
+      persist({ widgets: s.widgets, panels, defaultExpandedPanel: s.defaultExpandedPanel, audioAlertsEnabled: s.audioAlertsEnabled })
       return { panels }
     })
   },
 
   setDefaultExpandedPanel: (id) => {
     set((s) => {
-      persist({ widgets: s.widgets, panels: s.panels, defaultExpandedPanel: id })
+      persist({ widgets: s.widgets, panels: s.panels, defaultExpandedPanel: id, audioAlertsEnabled: s.audioAlertsEnabled })
       return { defaultExpandedPanel: id }
     })
   },
 
   setSettingsOpen: (open) => set({ settingsOpen: open }),
 
+  toggleAudioAlerts: () => {
+    set((s) => {
+      const audioAlertsEnabled = !s.audioAlertsEnabled
+      persist({ widgets: s.widgets, panels: s.panels, defaultExpandedPanel: s.defaultExpandedPanel, audioAlertsEnabled })
+      return { audioAlertsEnabled }
+    })
+  },
+
   resetToDefaults: () => {
     localStorage.removeItem('sis-settings')
-    set({ widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null })
+    set({ widgets: DEFAULT_WIDGETS, panels: DEFAULT_PANELS, defaultExpandedPanel: null, audioAlertsEnabled: true })
   },
 
   isWidgetVisible: (id) => get().widgets.find((w) => w.id === id)?.visible ?? true,

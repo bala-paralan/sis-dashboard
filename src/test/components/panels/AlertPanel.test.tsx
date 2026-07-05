@@ -158,3 +158,28 @@ describe('AlertPanel', () => {
     expect(screen.queryByText('Alert a1 description')).not.toBeInTheDocument()
   })
 })
+
+describe('AlertPanel — audio alert gating', () => {
+  it('AudioContext is not called when audioAlertsEnabled is false', async () => {
+    const { useSettingsStore } = await import('@/store/settingsStore')
+    useSettingsStore.setState({ ...useSettingsStore.getState(), audioAlertsEnabled: false })
+
+    const AudioContextSpy = vi.fn().mockReturnValue({
+      createOscillator: vi.fn().mockReturnValue({ connect: vi.fn(), frequency: { value: 0 }, start: vi.fn(), stop: vi.fn() }),
+      destination: {},
+      currentTime: 0,
+    })
+    Object.defineProperty(window, 'AudioContext', { value: AudioContextSpy, writable: true, configurable: true })
+
+    render(<AlertPanel />)
+
+    await act(async () => {
+      useAlertStore.getState().addAlert(mockAlert('beep1', 'CRITICAL'))
+    })
+
+    expect(AudioContextSpy).not.toHaveBeenCalled()
+
+    // restore
+    useSettingsStore.setState({ ...useSettingsStore.getState(), audioAlertsEnabled: true })
+  })
+})

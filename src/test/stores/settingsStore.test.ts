@@ -151,3 +151,32 @@ describe('settingsStore — setSettingsOpen', () => {
     expect(useSettingsStore.getState().settingsOpen).toBe(false)
   })
 })
+
+describe('settingsStore — audioAlertsEnabled', () => {
+  it('audioAlertsEnabled defaults to true', () => {
+    expect(useSettingsStore.getState().audioAlertsEnabled).toBe(true)
+  })
+
+  it('toggleAudioAlerts turns off audio alerts', () => {
+    useSettingsStore.getState().toggleAudioAlerts()
+    expect(useSettingsStore.getState().audioAlertsEnabled).toBe(false)
+  })
+
+  it('toggleAudioAlerts turns audio alerts back on', () => {
+    useSettingsStore.getState().toggleAudioAlerts()
+    useSettingsStore.getState().toggleAudioAlerts()
+    expect(useSettingsStore.getState().audioAlertsEnabled).toBe(true)
+  })
+
+  it('persists audioAlertsEnabled to localStorage', () => {
+    useSettingsStore.getState().toggleAudioAlerts()
+    const stored = JSON.parse(localStorage.getItem('sis-settings') ?? '{}')
+    expect(stored.audioAlertsEnabled).toBe(false)
+  })
+
+  it('resetToDefaults restores audioAlertsEnabled to true', () => {
+    useSettingsStore.getState().toggleAudioAlerts()
+    useSettingsStore.getState().resetToDefaults()
+    expect(useSettingsStore.getState().audioAlertsEnabled).toBe(true)
+  })
+})

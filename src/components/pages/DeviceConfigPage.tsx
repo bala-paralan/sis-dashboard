@@ -4,7 +4,7 @@
 //   Overview | Port Configuration | Data & Periodicity | Deployment Topology
 // ============================================================
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useSensorStore } from '@/store/sensorStore'
 import { getSensorFamilyColor } from '@/utils/formatters'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -251,8 +251,8 @@ function PinTable({ ports, liveSet, selectedPort, onSelect }: { ports: SensiPort
           {(['top','mid','bot','rear'] as FaceId[]).map(face=>{
             const rows = ports.filter(p=>p.face===face).sort((a,b)=>a.col-b.col)
             return (
-              <>
-                <tr key={`hdr-${face}`}><td colSpan={7} style={{ padding:'4px 10px', background:'var(--bg-tertiary)', fontSize:9, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-secondary)', borderTop:'1px solid var(--border-color)' }}>{FACE_LABEL[face]}</td></tr>
+              <React.Fragment key={face}>
+                <tr><td colSpan={7} style={{ padding:'4px 10px', background:'var(--bg-tertiary)', fontSize:9, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-secondary)', borderTop:'1px solid var(--border-color)' }}>{FACE_LABEL[face]}</td></tr>
                 {rows.map(p=>{
                   const live=liveSet.has(p.sensorId); const fc=getSensorFamilyColor(p.family); const ic=IFACE_COLOR[p.iface]; const isSel=selectedPort===p.port
                   return (
@@ -267,7 +267,7 @@ function PinTable({ ports, liveSet, selectedPort, onSelect }: { ports: SensiPort
                     </tr>
                   )
                 })}
-              </>
+              </React.Fragment>
             )
           })}
         </tbody>

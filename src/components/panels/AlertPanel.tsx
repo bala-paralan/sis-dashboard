@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useAlertStore } from '@/store/alertStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { AlertRow } from '@/components/widgets/AlertRow'
 import { exportAlertsCSV } from '@/utils/exporters'
 import type { ThreatLevel, SensorFamily } from '@/types/sensors'
@@ -86,6 +87,7 @@ export function AlertPanel() {
   const setFilter = useAlertStore((s) => s.setFilter)
   const filteredAlerts = useAlertStore((s) => s.filteredAlerts)
   const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert)
+  const audioAlertsEnabled = useSettingsStore((s) => s.audioAlertsEnabled)
 
   const prevCountRef = useRef(0)
 
@@ -104,16 +106,16 @@ export function AlertPanel() {
     return () => clearInterval(tickRef.current)
   }, [allAlerts])
 
-  // Audible alert on new CRITICAL/HIGH
+  // Audible alert on new CRITICAL/HIGH (only when audio is enabled)
   useEffect(() => {
     const critHigh = allAlerts.filter(
       (a) => !a.acknowledged && (a.threat_level === 'CRITICAL' || a.threat_level === 'HIGH')
     ).length
-    if (critHigh > prevCountRef.current) {
+    if (critHigh > prevCountRef.current && audioAlertsEnabled) {
       playBeep()
     }
     prevCountRef.current = critHigh
-  }, [allAlerts])
+  }, [allAlerts, audioAlertsEnabled])
 
   const displayed = useMemo(() => filteredAlerts(), [filteredAlerts, filter, allAlerts])
 

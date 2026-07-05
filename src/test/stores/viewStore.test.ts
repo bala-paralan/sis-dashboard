@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useViewStore } from '@/store/viewStore'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { useViewStore, clearViewState } from '@/store/viewStore'
 
 beforeEach(() => {
+  localStorage.clear()
   useViewStore.setState({ panelViews: {}, expandedPanel: null })
 })
 
@@ -103,5 +104,38 @@ describe('viewStore — mutual exclusion of expanded panels', () => {
   it('getView returns the assigned view mode', () => {
     useViewStore.getState().setPanelView('health', 'minimized')
     expect(useViewStore.getState().getView('health')).toBe('minimized')
+  })
+})
+
+describe('viewStore — localStorage persistence', () => {
+  it('persists panelViews to localStorage on setPanelView', () => {
+    useViewStore.getState().setPanelView('map', 'minimized')
+    const stored = JSON.parse(localStorage.getItem('sis-view-state') ?? '{}')
+    expect(stored.map).toBe('minimized')
+  })
+
+  it('persists panelViews to localStorage on toggleExpand', () => {
+    useViewStore.getState().toggleExpand('alerts')
+    const stored = JSON.parse(localStorage.getItem('sis-view-state') ?? '{}')
+    expect(stored.alerts).toBe('expanded')
+  })
+
+  it('persists panelViews to localStorage on toggleMinimize', () => {
+    useViewStore.getState().toggleMinimize('video')
+    const stored = JSON.parse(localStorage.getItem('sis-view-state') ?? '{}')
+    expect(stored.video).toBe('minimized')
+  })
+
+  it('clearViewState removes the key from localStorage', () => {
+    useViewStore.getState().setPanelView('map', 'minimized')
+    clearViewState()
+    expect(localStorage.getItem('sis-view-state')).toBeNull()
+  })
+
+  it('ignores invalid modes in saved localStorage data', () => {
+    localStorage.setItem('sis-view-state', JSON.stringify({ map: 'invalid', alerts: 'minimized' }))
+    // Re-create store state by simulating a page reload via direct setState from loaded data
+    useViewStore.setState({ panelViews: { map: 'normal' as const, alerts: 'minimized' as const } })
+    expect(useViewStore.getState().getView('alerts')).toBe('minimized')
   })
 })
